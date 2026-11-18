@@ -1,0 +1,280 @@
+openapi: 3.0.3
+info:
+  title: Membership API
+  version: 0.0.1-SNAPSHOT
+servers:
+  - url: /
+    description: This server
+tags:
+  - name: Registration
+  - name: Authentication
+paths:
+  /register:
+    post:
+      tags: [Registration]
+      summary: Register a new member
+      description: >
+        The member can log in right away; there is no email verification.
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+      responses:
+        '200':
+          description: Member registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: A member with this email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /oauth2/authorize:
+    get:
+      tags: [Authentication]
+      summary: Authorization endpoint (authorization code + PKCE); redirects the browser to the login page
+      description: >
+        Step 1 of the flow. The client sends the user's browser here. The request is validated and stored, and the
+        browser is redirected (302) to the login page with `?request_id=...`. The login page then calls `/auth/login`,
+        which answers with a redirect back to the client carrying `?code=...`.
+        An unknown client or a redirect URI that is not registered exactly answers 400 and is never redirected to.
+        A missing or wrong `response_type`, `code_challenge` or `code_challenge_method` is redirected to the
+        `redirect_uri` with `error` and `error_description`. Redirects to the `redirect_uri` (code or error) also
+        carry `state` when the client sent one, and `iss` (RFC 9207), the issuer identifier of this server.
+      operationId: authorize
+      security: []
+      parameters:
+        - {name: response_type, in: query, required: true, schema: {type: string, enum: [code]}}
+        - {name: client_id, in: query, required: true, schema: {type: string}}
+        - {name: redirect_uri, in: query, required: true, schema: {type: string}}
+        - {name: code_challenge, in: query, required: true, schema: {type: string}, description: 'BASE64URL(SHA256(code_verifier)), 43 characters'}
+        - {name: code_challenge_method, in: query, required: true, schema: {type: string, enum: [S256]}}
+        - {name: state, in: query, required: false, schema: {type: string, maxLength: 512}, description: 'Opaque client value (printable ASCII). Returned unchanged as `state` in the final redirect to the redirect_uri, on success and on error.'}
+      responses:
+        '302':
+          description: Redirect to the login page, or to the redirect URI with an error
+          headers:
+            Location: {schema: {type: string}}
+        '400':
+          description: Unknown client or unregistered redirect URI
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Log in with email and password (from the login page); a correct password redirects to the client with an authorization code (no tokens)
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '302':
+          description: >
+            Redirect to the client's registered redirect URI carrying the one-time authorization code (valid 60
+            seconds). Tokens are issued only by `/oauth2/token`.
+          headers:
+            Location:
+              schema:
+                type: string
+              description: redirect_uri?code=...&state=...&iss=...
+        '400':
+          description: Validation failed, or the authorization request is unknown or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /oauth2/token:
+    post:
+      tags: [Authentication]
+      summary: Token endpoint; authorization code + PKCE verifier or refresh token for tokens
+      description: >
+        The code is single use: any refusal (wrong verifier, client or redirect URI included) uses it up.
+        All refusals return the same 400 message.
+      operationId: token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [grantType, clientId]
+              properties:
+                grantType:
+                  type: string
+                  enum: [authorization_code, refresh_token]
+                  description: >
+                    `authorization_code` needs `code` and `codeVerifier`;
+                    `refresh_token` needs `refreshToken` (single use, rotated on every call)
+                refreshToken:
+                  type: string
+                code:
+                  type: string
+                clientId:
+                  type: string
+                codeVerifier:
+                  type: string
+                  pattern: '^[A-Za-z0-9\-._~]{43,128}$'
+                  description: The secret whose S256 hash was sent as `code_challenge`
+      responses:
+        '200':
+          description: Tokens for the new session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Validation failed, or the code, client, redirect URI or verifier is not accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Revoke the session of the access token sent in the Authorization header
+      description: The access token stays valid until it expires (at most 15 minutes); the refresh token stops working immediately.
+      operationId: logout
+      responses:
+        '204':
+          description: Session revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+security: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: Missing, invalid or expired access token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password, requestId]
+      properties:
+        email:
+          type: string
+          format: email
+          example: jane@example.com
+        password:
+          type: string
+          format: password
+          minLength: 15
+          maxLength: 64
+        requestId:
+          type: string
+          maxLength: 128
+          description: The `request_id` the authorization endpoint put in the login page URL; unknown or expired gets 400
+    AuthorizationCodeResponse:
+      type: object
+      properties:
+        redirectTo:
+          type: string
+          description: The client's redirect URI with the one-time `code` query parameter; send the browser there
+          example: https://app.example.com/cb?code=Zm9v
+        expiresIn:
+          type: integer
+          description: Seconds until the code expires
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: RS256 JWT; `sub` = the member's email, `sid` = session id, `ip` = client IP address the session was started from
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          description: Access token lifetime in seconds
+          example: 900
+        refreshToken:
+          type: string
+        sessionId:
+          type: string
+    RegistrationRequest:
+      type: object
+      required: [firstName, lastName, email, phoneNo, password]
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 25
+          pattern: '^[^0-9]*$'
+          description: Must not contain digits
+          example: Jane
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 25
+          pattern: '^[^0-9]*$'
+          description: Must not contain digits
+          example: Doe
+        email:
+          type: string
+          example: jane@example.com
+        phoneNo:
+          type: string
+          minLength: 10
+          maxLength: 12
+          pattern: '^[0-9]*$'
+          example: '9876543210'
+        password:
+          type: string
+          format: password
+          minLength: 15
+          maxLength: 64
+          writeOnly: true
+          description: >
+            Length rules follow NIST SP 800-63B / OWASP: it must have 15 to 64 characters
+            (Unicode code points). Any character is allowed, including spaces,
+            Unicode and symbols; nothing is trimmed or truncated. Violations return 400 with the rule in the message.
+            Stored as a salted BCrypt hash of the SHA-256 of the password.
+    RegistrationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: User Registered
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 404
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time

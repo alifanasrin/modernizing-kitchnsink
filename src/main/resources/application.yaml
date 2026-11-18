@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: auth-service
+
+
+  data:
+    redis:
+      host: ${VALKEY_HOST:localhost}
+      port: ${VALKEY_PORT:6379}
+
+  mongodb:
+    uri: mongodb://localhost:27017
+    database: auth-db
+
+mongock:
+  migration-scan-package:
+    - kitchen.sink.demo.migration
+
+springdoc:
+  swagger-ui:
+    # Show the hand-written spec instead of the one generated from the code
+    url: /openapi.yaml
+
+logging:
+  pattern:
+    # readable trace context; blank outside a request (startup, background threads)
+    correlation: "[traceId=%X{traceId:-} spanId=%X{spanId:-}] "
+
+management:
+  tracing:
+    propagation:
+      # W3C `traceparent` header: read from incoming requests (consume) and added to outgoing calls (produce)
+      type: w3c
+    sampling:
+      # 1.0 = trace every request; lower it in busy environments
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      # Despite the name, this switch is what turns tracing on (trace ids in logs, traceparent propagation).
+      # Nothing leaves the process: no span exporter (OTLP, Zipkin) is on the classpath, so do not add one.
+      enabled: true
+  logging:
+    export:
+      otlp:
+        # logs are not exported either
+        enabled: false
+  otlp:
+    metrics:
+      export:
+        # metrics are not exported either
+        enabled: false
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  oauth:
+    # the front-end login page the authorization endpoint redirects to, with ?request_id=...
+    login-url: ${OAUTH_LOGIN_URL:http://localhost:3000/login}
+  security:
+    jwt:
+      # RS256 key pair: the PEM contents (not file paths) of the JWT_PRIVATE_KEY (PKCS#8, signs) and JWT_PUBLIC_KEY
+      # (X.509, verifies) environment variables. No defaults: the app will not start without them.
+      private-key: ${JWT_PRIVATE_KEY:}
+      public-key: ${JWT_PUBLIC_KEY:}
+      # the `iss` claim; tokens with any other issuer are rejected. Override per environment with JWT_ISSUER
+      issuer: ${JWT_ISSUER:http://localhost:8080/auth-service}
+      # tokens whose `aud` does not contain this value are rejected; the clients' `aud` lists must include it
+      audience: ${JWT_AUDIENCE:auth-service}
+      access-token-ttl: 15m
+      refresh-token-ttl: 1d
+  mongo:
+    # Applied in MongoConfig; override per environment with the env vars
+    connect-timeout-ms: ${MONGO_CONNECT_TIMEOUT_MS:2000}
+    server-selection-timeout-ms: ${MONGO_SERVER_SELECTION_TIMEOUT_MS:3000}
+    socket-timeout-ms: ${MONGO_SOCKET_TIMEOUT_MS:10000}
+    max-pool-size: ${MONGO_MAX_POOL_SIZE:50}
+    wait-queue-timeout-ms: ${MONGO_WAIT_QUEUE_TIMEOUT_MS:3000}
+    transactions:
+      # needs a replica set (production); set MONGO_TRANSACTIONS_ENABLED=false on a standalone local MongoDB
+      enabled: ${MONGO_TRANSACTIONS_ENABLED:true}
+      max-commit-time-ms: ${MONGO_TRANSACTION_MAX_COMMIT_TIME_MS:5000}

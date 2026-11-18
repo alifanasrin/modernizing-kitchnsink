@@ -1,0 +1,56 @@
+# Database Schema
+
+All application data is in the MongoDB database `membership`. The diagram shows the collections, their fields and their relationships. Indexes and other stores are explained in `database-schema-notes.md`. Mongo has no foreign keys, so the relationships are by convention.
+
+```mermaid
+erDiagram
+    member ||--o{ session : "userId = member _id"
+    member ||--o{ oauth_authorization : "userId = member _id (after password)"
+    oauth_client ||--o{ oauth_authorization : "clientId"
+    oauth_client ||--o{ session : "clientId"
+    oauth_authorization |o--o| session : "sessionId (after code exchange)"
+
+    member {
+        string _id PK "Mongo ObjectId"
+        string email UK "normalized"
+        string phone_number "10 to 12 digits"
+        string first_name "max 25"
+        string last_name "max 25, null for old single-word names; (last_name, first_name) indexed for sorting"
+        string password_hash "BCrypt, null for old members"
+    }
+
+    oauth_client {
+        string _id PK
+        string clientId UK "public identifier"
+        string name "display name"
+        list aud "aud of access tokens, at least one"
+        set redirectUris "exact match"
+        boolean active
+    }
+
+    oauth_authorization {
+        string _id PK
+        string requestId UK "sparse, unset once code issued"
+        string codeHash UK "sparse, SHA-256 of auth code"
+        string userId FK "member _id, null until the code is issued"
+        string sessionId FK "set after exchange"
+        string clientId FK
+        string redirectUri
+        string state "client opaque state"
+        string codeChallenge "PKCE S256"
+        string status "REQUESTED, CODE_ISSUED, USED"
+        date createdAt
+        date expiresAt "TTL index"
+    }
+
+    session {
+        string _id PK
+        string userId FK "member _id, indexed"
+        string clientId FK "null on old sessions"
+        string refreshTokenHash UK "SHA-256 of the current refresh token"
+        date createdAt
+        date lastUsedAt
+        date expiresAt "TTL index, 7 days"
+        string ipAddress
+    }
+```

@@ -1,0 +1,45 @@
+package kitchen.sink.demo.config;
+
+import kitchen.sink.demo.security.RestAuthenticationHandlers;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+
+
+/**
+ * Stateless bearer-JWT security. The HTTP session is never used; the "session" concept is the Mongo
+ * {@code session} document that anchors the refresh token.
+ */
+@Configuration
+public class SecurityConfig {
+
+    /** Defines the stateless bearer-JWT rules and which endpoints are public. */
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                // Bearer tokens are not sent by browsers automatically, so CSRF does not apply.
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/oauth2/authorize").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/register", "/auth/login",
+                                "/oauth2/token").permitAll()
+                        .requestMatchers("/actuator/health/**", "/actuator/health").permitAll()
+                        .requestMatchers("/openapi.yaml", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+                        .permitAll()
+                        .anyRequest().authenticated())
+                .oauth2ResourceServer(oauth -> oauth
+                        .jwt(Customizer.withDefaults())
+                        .authenticationEntryPoint(RestAuthenticationHandlers.entryPoint())
+                        .accessDeniedHandler(RestAuthenticationHandlers.accessDeniedHandler()))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(RestAuthenticationHandlers.entryPoint())
+                        .accessDeniedHandler(RestAuthenticationHandlers.accessDeniedHandler()));
+        return http.build();
+    }
+}
