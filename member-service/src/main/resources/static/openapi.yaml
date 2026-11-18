@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: Member API
+  version: 0.0.1-SNAPSHOT
+  description: >
+    Read-only member APIs. Every endpoint needs an access token issued by auth-service
+    (`Authorization: Bearer <jwt>`) whose `aud` contains this service.
+servers:
+  - url: /
+    description: This server
+tags:
+  - name: Members
+paths:
+  /members:
+    get:
+      tags: [Members]
+      summary: List members sorted by last name, then first name (paginated)
+      operationId: members
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pageNo
+          in: query
+          description: 1-based page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: A page of members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMemberResponse'
+        '400':
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /members/{email}:
+    get:
+      tags: [Members]
+      summary: Find a member by their email address
+      operationId: findByEmail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        '200':
+          description: The member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+security: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: Missing, invalid or expired access token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    MemberResponse:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+          nullable: true
+          description: Absent for members registered with a single-word name
+        phoneNo:
+          type: string
+        email:
+          type: string
+    PaginatedMemberResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemberResponse'
+        pageSize:
+          type: integer
+        pageNo:
+          type: integer
+          description: 1-based
+        lastPage:
+          type: integer
+        totalRecords:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 404
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time

@@ -1,0 +1,7 @@
+Hi {{name}},
+
+Your verification code is: {{code}}
+
+It expires in {{minutes}} minute(s). If you did not try to sign in, ignore this email and consider changing your password.
+
+Never share this code with anyone.

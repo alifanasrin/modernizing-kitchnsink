@@ -1,0 +1,27 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: member-service
+
+  mongodb:
+    # the same database as auth-service: this service only reads its `member` collection
+    uri: ${MONGODB_URI:mongodb://localhost:27017}
+    database: ${MONGODB_DATABASE:member-db}
+
+app:
+  security:
+    jwt:
+      # X.509 PEM public key of auth-service (the contents, not a file path); a literal \n stands for a line break.
+      # No default: the app will not start without it. Same value as auth-service's JWT_PUBLIC_KEY.
+      public-key: ${JWT_PUBLIC_KEY:}
+      # tokens with any other `iss` are rejected; must equal auth-service's issuer
+      issuer: ${JWT_ISSUER:http://localhost:8080/auth-service}
+      # tokens whose `aud` does not contain this value are rejected; the clients' `aud` lists in auth-service must include it
+      audience: ${JWT_AUDIENCE:member-service}
+
+management:
+  endpoint:
+    health:
+      show-details: when-authorized
