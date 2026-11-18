@@ -26,7 +26,7 @@ Layered structure: `controller` → `service` (interface in `service/`, implemen
 
 Endpoints:
 - `POST /register` (`RegistrationController`) takes a `@Valid` `RegistrationRequest` (first and last name each max 25 and no digits, valid email, 10-12 digit phone) and returns 200 with a `RegistrationResponse`.
-- The member read APIs (`GET /members`, `GET /members/{email}`) moved to the sibling `../member-service`, which reads the same `member` collection and trusts this service's access tokens (see its `CLAUDE.md`). This service has no `/members` endpoint any more.
+- `GET /members` (paged, `pageNo` >= 1, `pageSize` 1-50, sorted by last then first name) and `GET /members/{email}` (`MemberController` → `MemberService` → `MemberRepository`) need a bearer JWT and return `MemberResponse` (first/last name, phone, email only, never the password hash); an unknown email is a 404 `MemberNotFoundException`. They are also served by the sibling `../member-service`, which reads the same `member` collection and trusts this service's access tokens (see its `CLAUDE.md`); the two copies must be kept in sync.
 
 ### Authentication (passwords, sessions, tokens)
 

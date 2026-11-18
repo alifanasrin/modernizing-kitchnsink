@@ -28,6 +28,12 @@ public class GlobalExceptionHandler {
         return refuse(HttpStatus.UNAUTHORIZED, ex);
     }
 
+    /** Returns 404 when no member has the requested email. */
+    @ExceptionHandler(MemberNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleMemberNotFound(MemberNotFoundException ex) {
+        return refuse(HttpStatus.NOT_FOUND, ex);
+    }
+
     /** Returns 403 when the caller is not allowed to do this. */
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenException ex) {
