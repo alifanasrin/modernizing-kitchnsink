@@ -11,3 +11,7 @@ node_modules/
 **/keys/
 *.tsbuildinfo
 .claude/settings.local.json
+
+# Kept locally, not tracked in this repo
+member-service/
+notification-service/

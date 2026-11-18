@@ -1,7 +1,0 @@
-Hi {{name}},
-
-Welcome! Please confirm your email address to activate your account:
-
-{{verificationLink}}
-
-The link expires in {{minutes}} minute(s). If you did not create an account, ignore this email and nothing will happen.

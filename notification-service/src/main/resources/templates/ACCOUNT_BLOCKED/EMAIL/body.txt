@@ -1,5 +1,0 @@
-Hi {{name}},
-
-Your account was blocked after too many incorrect password attempts.
-
-Please reset your password to regain access. If this was not you, someone may be trying to get into your account, so reset your password right away.
