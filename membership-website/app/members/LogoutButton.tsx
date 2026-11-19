@@ -14,7 +14,7 @@ export default function LogoutButton() {
     } catch {
       // Network error: the server may not have revoked the session, but leave the page regardless.
     } finally {
-      router.push('/login?state='); // explicit empty state: do not return to this page after the next sign-in
+      router.push('/'); // back to the welcome page; the next sign-in starts fresh
       router.refresh();
     }
   };

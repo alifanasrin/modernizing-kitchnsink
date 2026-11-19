@@ -1,5 +1,11 @@
+import MemberShell from '../components/MemberShell';
+
 export default function Loading() {
-  return <main className="page">
-      <p className="empty">Loading members…</p>
-    </main>;
+  return (
+    <MemberShell wide>
+      <p className="hero-kicker">Community</p>
+      <h1>Members</h1>
+      <p className="hero-sub" role="status">Loading members…</p>
+    </MemberShell>
+  );
 }

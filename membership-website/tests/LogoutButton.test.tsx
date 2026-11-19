@@ -16,21 +16,21 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('LogoutButton', () => {
-  it('POSTs /api/auth/logout then goes to /login without a return state', async () => {
+  it('POSTs /api/auth/logout then goes to the welcome page', async () => {
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
     const user = userEvent.setup();
     render(<LogoutButton />);
     await user.click(screen.getByRole('button', { name: /log out/i }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/login?state='));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/'));
     expect(fetchMock).toHaveBeenCalledWith('/api/auth/logout', { method: 'POST' });
     expect(refresh).toHaveBeenCalled();
   });
 
-  it('still leaves to /login if the request fails', async () => {
+  it('still leaves to the welcome page if the request fails', async () => {
     fetchMock.mockRejectedValue(new Error('down'));
     const user = userEvent.setup();
     render(<LogoutButton />);
     await user.click(screen.getByRole('button', { name: /log out/i }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/login?state='));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/'));
   });
 });

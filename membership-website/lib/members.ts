@@ -1,5 +1,6 @@
 import 'server-only';
 import { logger } from './logger';
+import { hosts } from './config';
 import { ACCESS_COOKIE } from './oauth';
 import { cookies } from 'next/headers';
 
@@ -16,7 +17,7 @@ export class UnauthorizedError extends Error {}
 export class PageNotFoundError extends Error {}
 export class BadGatewayError extends Error {}
 
-const API_URL = process.env.MEMBERS_API_URL ?? 'http://localhost:8080/members';
+const API_URL = process.env.MEMBERS_API_URL ?? `${hosts.member}/members`;
 export const FIRST_PAGE = Number(process.env.MEMBERS_FIRST_PAGE ?? 1); // set to 0 if backend pages are 0-based
 export const PAGE_SIZES = [5, 10, 20, 50];
 export const DEFAULT_PAGE_SIZE = 10;

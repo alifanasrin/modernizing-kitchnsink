@@ -4,7 +4,8 @@ import { challengeFor, generateVerifier } from '@/lib/pkce';
 import { REQUEST_COOKIE, STATE_COOKIE, VERIFIER_COOKIE, cleanOrigin, clearCookie, oauth, setCookie } from '@/lib/oauth';
 
 // Step 1 of authorization code + PKCE. The server (not the browser) calls /oauth2/authorize,
-// reads the request_id from the 302 Location, and sends the browser to our own /login page.
+// reads the request_id from the 302 Location, and sends the browser to the login page that Location names
+// (hosted by the auth service; this app has no login or register page of its own).
 export async function GET(req: NextRequest) {
   const to = (path: string) => NextResponse.redirect(new URL(path, req.url));
   const verifier = generateVerifier();
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   url.searchParams.set('redirect_uri', oauth.redirectUri);
   url.searchParams.set('code_challenge', await challengeFor(verifier));
   url.searchParams.set('code_challenge_method', 'S256');
-  // Optional `state`: where the user came from. Not sent when they come from /login or /api/oauth/start themselves.
+  // Optional `state`: where the user came from. Only /members is ever sent.
   const state = cleanOrigin(req.nextUrl.searchParams.get('state'));
   if (state) url.searchParams.set('state', state);
 
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
     res = await fetch(url, { redirect: 'manual', cache: 'no-store' });
   } catch (e) {
     logger.error('oauth: authorize endpoint unreachable', { error: e });
-    return to('/login?error=unreachable');
+    return to('/?error=unreachable');
   }
 
   // 400 from authorize means the backend rejected the client itself (unknown client_id / redirect_uri); retrying cannot help.
@@ -34,15 +35,21 @@ export async function GET(req: NextRequest) {
   }
 
   const location = res.headers.get('location');
-  const requestId = location ? new URL(location, url).searchParams.get('request_id') : null;
-  if (!requestId) {
+  let loginPage: URL | null = null;
+  try {
+    loginPage = location ? new URL(location, url) : null;
+  } catch {
+    loginPage = null;
+  }
+  const requestId = loginPage?.searchParams.get('request_id') ?? null;
+  if (!loginPage || !requestId || !/^https?:$/.test(loginPage.protocol)) {
     logger.error('oauth: authorize response had no request_id', { status: res.status });
-    return to('/login?error=authorize_failed');
+    return to('/?error=authorize_failed');
   }
   logger.info('oauth: authorize started', { hasState: !!state });
 
   // Everything that follows (login, callback) is only accepted while these cookies from THIS authorize call exist.
-  const out = to(`/login?request_id=${encodeURIComponent(requestId)}`);
+  const out = NextResponse.redirect(loginPage);
   setCookie(out, VERIFIER_COOKIE, verifier, 600);
   setCookie(out, REQUEST_COOKIE, requestId, 600);
   if (state) setCookie(out, STATE_COOKIE, state, 600);

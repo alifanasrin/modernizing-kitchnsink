@@ -8,7 +8,6 @@ servers:
 tags:
   - name: Registration
   - name: Authentication
-  - name: Members
 paths:
   /register:
     post:
@@ -165,62 +164,6 @@ paths:
           description: Session revoked
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /members:
-    get:
-      tags: [Members]
-      summary: List members, sorted by last then first name
-      operationId: getMembers
-      security:
-        - bearerAuth: []
-      parameters:
-        - {name: pageNo, in: query, schema: {type: integer, minimum: 1, default: 1}}
-        - {name: pageSize, in: query, schema: {type: integer, minimum: 1, maximum: 50, default: 10}}
-      responses:
-        '200':
-          description: A page of members
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedMembers'
-        '400':
-          description: Invalid paging parameter
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /members/{email}:
-    get:
-      tags: [Members]
-      summary: Get a member by email
-      operationId: getMemberByEmail
-      security:
-        - bearerAuth: []
-      parameters:
-        - {name: email, in: path, required: true, schema: {type: string, format: email}}
-      responses:
-        '200':
-          description: The member
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MemberResponse'
-        '400':
-          description: Not an email address
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          description: No member with that email
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-security: []
 components:
   securitySchemes:
     bearerAuth:
@@ -323,25 +266,6 @@ components:
         message:
           type: string
           example: User Registered
-    MemberResponse:
-      type: object
-      properties:
-        firstName: {type: string}
-        lastName: {type: string}
-        phoneNo: {type: string}
-        email: {type: string, format: email}
-    PaginatedMembers:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/MemberResponse'
-        pageSize: {type: integer}
-        pageNo: {type: integer}
-        lastPage: {type: integer}
-        totalRecords: {type: integer, format: int64}
-        totalPages: {type: integer, format: int64}
     ErrorResponse:
       type: object
       properties:

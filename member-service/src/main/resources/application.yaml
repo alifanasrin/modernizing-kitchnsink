@@ -1,0 +1,60 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: member-service
+
+  mongodb:
+    # this service's own database (not auth-service's): members arrive through the Kafka events
+    uri: ${MONGODB_URI:mongodb://localhost:27017}
+    database: ${MONGODB_DATABASE:member-db}
+  data:
+    mongodb:
+      # creates the indexes declared on Member (unique email, last/first name sort)
+      auto-index-creation: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: member-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer # parsed in code, so a bad payload goes to the DLT
+      auto-offset-reset: earliest # a new consumer group reads every event, so no registration is missed
+      enable-auto-commit: false
+    producer:
+      # only used to publish failed events to the dead-letter topic
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    listener:
+      ack-mode: record # the offset is committed after each record is handled; a crash mid-record redelivers it
+      observation-enabled: true # continues the producer's trace from the W3C `traceparent` header
+    template:
+      observation-enabled: true
+
+app:
+  kafka:
+    topic:
+      member-registered: ${MEMBER_REGISTERED_TOPIC:member.registered} # same topic as auth-service publishes to
+      dead-letter: ${MEMBER_REGISTERED_TOPIC:member.registered}.DLT
+      partitions: 3
+      replicas: 1
+  retry:
+    # retries after the first failed attempt (e.g. MongoDB down); then the event goes to the dead-letter topic
+    max-retries: 3
+    initial-interval: 1s
+    multiplier: 2.0
+  security:
+    jwt:
+      # X.509 PEM public key of auth-service (the contents, not a file path); a literal \n stands for a line break.
+      # No default: the app will not start without it. Same value as auth-service's JWT_PUBLIC_KEY.
+      public-key: ${JWT_PUBLIC_KEY:}
+      # tokens with any other `iss` are rejected; must equal auth-service's issuer
+      issuer: ${JWT_ISSUER:http://localhost:8080/auth-service}
+      # tokens whose `aud` does not contain this value are rejected; the clients' `aud` lists in auth-service must include it
+      audience: ${JWT_AUDIENCE:memeber-service}
+
+management:
+  endpoint:
+    health:
+      show-details: when-authorized

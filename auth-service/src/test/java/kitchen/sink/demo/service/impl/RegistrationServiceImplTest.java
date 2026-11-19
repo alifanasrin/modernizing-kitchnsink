@@ -3,6 +3,7 @@ package kitchen.sink.demo.service.impl;
 import kitchen.sink.demo.dto.request.RegistrationRequest;
 import kitchen.sink.demo.dto.response.RegistrationResponse;
 import kitchen.sink.demo.entity.Member;
+import kitchen.sink.demo.event.MemberRegistered;
 import kitchen.sink.demo.repository.MemberRepository;
 import kitchen.sink.demo.security.PasswordPolicy;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.dao.DuplicateKeyException;
 
@@ -39,13 +41,16 @@ class RegistrationServiceImplTest {
     @Mock
     PasswordPolicy passwordPolicy;
 
+    @Mock
+    ApplicationEventPublisher events;
+
     RegistrationServiceImpl service;
 
     static final Instant NOW = Instant.parse("2026-11-03T10:00:00Z");
 
     @BeforeEach
     void setUp() {
-        service = new RegistrationServiceImpl(memberRepository, passwordEncoder, passwordPolicy);
+        service = new RegistrationServiceImpl(memberRepository, passwordEncoder, passwordPolicy, events);
     }
 
     private static RegistrationRequest validRequest() {
@@ -86,6 +91,17 @@ class RegistrationServiceImplTest {
 
         assertThatThrownBy(() -> service.registerUser(request)).isInstanceOf(DuplicateKeyException.class);
         verify(memberRepository, times(1)).save(any(Member.class));
+        verify(events, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @Tag("critical")
+    void shouldAnnounceRegisteredMember_withoutAnyPassword() {
+        service.registerUser(validRequest());
+
+        ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
+        verify(events).publishEvent(event.capture());
+        assertThat(event.getValue()).isEqualTo(new MemberRegistered(null, "ann@example.com", "1234567890", "Ann", "Lee"));
     }
 
     @Test

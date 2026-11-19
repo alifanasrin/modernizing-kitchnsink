@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Login</title>
+<link rel="stylesheet" th:href="@{/pages/auth.css}">
+</head>
+<body>
+<div class="welcome" aria-hidden="true"><span>Welcome</span></div>
+<main class="card">
+  <div class="card-body">
+  <h1>Login</h1>
+  <p class="subtitle">Welcome back. Sign in to continue.</p>
+  <p class="notice notice-error" role="alert" th:if="${error != null}" th:text="${error}"></p>
+  <form method="post" th:action="@{/login}" th:if="${requestId != null}">
+    <input type="hidden" name="request_id" th:value="${requestId}">
+    <label><span class="sr">Email</span>
+      <input placeholder="Email" name="email" type="email" autocomplete="username" required maxlength="254">
+    </label>
+    <label><span class="sr">Password</span>
+      <input placeholder="Password" name="password" type="password" autocomplete="current-password" required minlength="15" maxlength="64">
+    </label>
+    <button type="submit">Login</button>
+  </form>
+  </div>
+  <p class="footer" th:if="${requestId != null}">Don't have an account?
+    <a th:href="@{/register(request_id=${requestId})}">Register</a>.</p>
+</main>
+</body>
+</html>

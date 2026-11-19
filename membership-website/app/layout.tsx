@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Register',
-  description: 'Create an account with your first and last name, email and phone number.',
+  title: { default: 'Backpack', template: '%s | Backpack' },
+  description: 'Backpack membership.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

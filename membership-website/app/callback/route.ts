@@ -9,8 +9,8 @@ export async function GET(req: NextRequest) {
   const verifier = req.cookies.get(VERIFIER_COOKIE)?.value;
 
   const fail = (reason: string) => {
-    logger.warn('oauth: callback failed, redirecting to login', { reason });
-    const out = NextResponse.redirect(new URL(`/login?error=${reason}`, req.url));
+    logger.warn('oauth: callback failed, redirecting to welcome page', { reason });
+    const out = NextResponse.redirect(new URL(`/?error=${reason}`, req.url));
     clearFlowCookies(out);
     return out;
   };

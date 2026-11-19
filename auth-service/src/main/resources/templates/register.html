@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Register</title>
+<link rel="stylesheet" th:href="@{/pages/auth.css}">
+</head>
+<body>
+<div class="welcome" aria-hidden="true"><span>Welcome</span></div>
+<main class="card">
+  <div class="card-body">
+  <h1>Register</h1>
+  <p class="subtitle">Create your account.</p>
+  <form id="form" novalidate>
+    <label><span class="sr">First name</span>
+      <input placeholder="First name" name="firstName" autocomplete="given-name" maxlength="25">
+      <small class="field-error" role="alert"></small>
+    </label>
+    <label><span class="sr">Last name</span>
+      <input placeholder="Last name" name="lastName" autocomplete="family-name" maxlength="25">
+      <small class="field-error" role="alert"></small>
+    </label>
+    <label><span class="sr">Email</span>
+      <input placeholder="Email" name="email" type="email" autocomplete="email" maxlength="254">
+      <small class="field-error" role="alert"></small>
+    </label>
+    <label><span class="sr">Phone number</span>
+      <input placeholder="Phone number" name="phoneNo" type="tel" inputmode="numeric" autocomplete="tel" maxlength="12">
+      <small class="field-error" role="alert"></small>
+    </label>
+    <label><span class="sr">Password (15 to 64 characters)</span>
+      <input placeholder="Password (15-64 characters)" name="password" type="password" autocomplete="new-password">
+      <small class="field-error" role="alert"></small>
+    </label>
+    <button type="submit" id="submit">Register</button>
+  </form>
+  <p id="result" class="notice" role="status" hidden></p>
+  </div>
+  <p class="footer" th:if="${requestId != null}">Already have an account?
+    <a th:href="@{/login(request_id=${requestId})}">Log in</a>.</p>
+</main>
+<script th:src="@{/pages/register.js}"></script>
+</body>
+</html>

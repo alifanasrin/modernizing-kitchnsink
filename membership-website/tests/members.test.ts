@@ -26,7 +26,7 @@ describe('fetchMembers', () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify(page), { status: 200 }));
     const result = await fetchMembers(2, 20);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toBe('http://localhost:8080/members?pageNo=2&pageSize=20');
+    expect(String(url)).toBe('http://localhost:8081/members?pageNo=2&pageSize=20');
     expect(init.headers.Authorization).toBe('Bearer tok');
     expect(init.headers.Cookie).toBeUndefined();
     expect(result).toEqual(page);

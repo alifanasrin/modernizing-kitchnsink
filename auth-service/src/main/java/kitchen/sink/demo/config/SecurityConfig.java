@@ -24,10 +24,16 @@ public class SecurityConfig {
         http
                 // Bearer tokens are not sent by browsers automatically, so CSRF does not apply.
                 .csrf(AbstractHttpConfigurer::disable)
+                // The hosted pages load only their own scripts and styles and may not be framed. No form-action:
+                // the login form's 302 goes to the client's redirect URI, which CSP would count as a form target.
+                .headers(h -> h.contentSecurityPolicy(csp -> csp.policyDirectives(
+                        "default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; "
+                                + "base-uri 'none'")))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/oauth2/authorize").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/register", "/auth/login",
+                        .requestMatchers(HttpMethod.GET, "/oauth2/authorize", "/login", "/register",
+                                "/pages/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/register", "/login", "/auth/login",
                                 "/oauth2/token").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/health").permitAll()
                         .requestMatchers("/openapi.yaml", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")

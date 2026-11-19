@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { logger } from './logger';
+import { hosts } from './config';
 
 // ---- Cookies --------------------------------------------------------------------------------------------
 // Every cookie is HttpOnly, SameSite=Lax, host-only (no Domain), short-lived, and Secure in production.
 // In production names get a prefix the browser enforces: `__Host-` (Secure, Path=/, no Domain) for site-wide
 // cookies, `__Secure-` for the refresh token, whose Path is narrowed to /api/auth so it is only ever sent there.
 // (Prefixes are skipped in dev because Secure cookies do not work over plain http://localhost in every browser.)
-// SameSite=Lax (not Strict) on purpose: a link from another site into /login or /members must still carry cookies.
+// SameSite=Lax (not Strict) on purpose: a link from another site into /members must still carry cookies.
 const PROD = process.env.NODE_ENV === 'production';
 const host = PROD ? '__Host-' : '';
 
@@ -21,7 +22,7 @@ export const REFRESH_PATH = '/api/auth';
 const cookiePath = (name: string) => (name === REFRESH_COOKIE ? REFRESH_PATH : '/');
 
 
-const BASE = process.env.AUTH_BASE_URL ?? 'http://localhost:8080';
+const BASE = hosts.auth;
 
 // Public OAuth client registered on the backend (client id + exact redirect URI).
 export const oauth = {
@@ -29,7 +30,8 @@ export const oauth = {
   redirectUri: process.env.OAUTH_REDIRECT_URI ?? 'http://localhost:3000/callback',
   authorizeUrl: process.env.OAUTH_AUTHORIZE_URL ?? `${BASE}/oauth2/authorize`,
   tokenUrl: process.env.OAUTH_TOKEN_URL ?? `${BASE}/oauth2/token`,
-  loginUrl: process.env.LOGIN_API_URL ?? `${BASE}/auth/login`,
+  // Hosted by the auth service, not by this app. Used for the "Register" link on the welcome page.
+  registerPageUrl: process.env.REGISTER_PAGE_URL ?? `${BASE}/register`,
   refreshUrl: process.env.REFRESH_API_URL ?? `${BASE}/auth/refresh`,
   logoutUrl: process.env.LOGOUT_API_URL ?? `${BASE}/auth/logout`,
 };
@@ -114,7 +116,7 @@ export const safePath = (p: string | null | undefined, fallback = '/members') =>
 /** Where a signed-in user lands when the flow did not start from a page that needs to be returned to. */
 export const DEFAULT_LANDING = '/home';
 
-// Only these pages are worth returning to. Login, register etc. are never sent as `state`.
+// Only these pages are worth returning to. The welcome page, register etc. are never sent as `state`.
 const STATE_PAGES = ['/members'];
 
 /**

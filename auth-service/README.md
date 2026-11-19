@@ -99,8 +99,6 @@ curl -X POST http://localhost:8080/register \
 # login answers 302 to the client redirect URI with the authorization code; tokens come from POST /oauth2/token
 curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" \
   -d '{"email":"jane@example.com","password":"correct horse battery staple"}'
-
-curl "http://localhost:8080/members?pageNo=1&pageSize=10" -H "Authorization: Bearer <accessToken>"
 ```
 
 ### Validation rules
@@ -117,7 +115,6 @@ All errors use the same body: `{ "status": 400, "message": "...", "timestamp": "
 | Status | Cause |
 |---|---|
 | 400 | Request body or parameter validation failed |
-| 404 | Member not found |
 | 409 | A member with that email already exists |
 
 ### Docs and health

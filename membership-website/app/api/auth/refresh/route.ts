@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const next = safePath(req.nextUrl.searchParams.get('next'));
   const toLogin = (why: string) => {
     logger.info('refresh: sending user to login', { why });
-    const out = NextResponse.redirect(new URL(`/login?state=${encodeURIComponent(next)}`, req.url));
+    const out = NextResponse.redirect(new URL(`/api/oauth/start?state=${encodeURIComponent(next)}`, req.url));
     clearSessionCookies(out);
     return out;
   };

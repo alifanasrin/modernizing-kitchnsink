@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { rateLimit, rejectUnsafeRequest, resetRateLimits } from '@/lib/security';
-import { POST as login } from '@/app/api/login/route';
 import { POST as logout } from '@/app/api/auth/logout/route';
 import { NextRequest } from 'next/server';
 
@@ -39,15 +38,6 @@ describe('rateLimit', () => {
 });
 
 describe('route wiring', () => {
-  it('login rejects cross-origin and throttles', async () => {
-    const bad = new NextRequest('http://localhost:3000/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json', origin: 'https://evil.example' }, body: '{}' });
-    expect((await login(bad)).status).toBe(403);
-    let last = 0;
-    for (let i = 0; i < 11; i++) {
-      last = (await login(new NextRequest('http://localhost:3000/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }))).status;
-    }
-    expect(last).toBe(429);
-  });
   it('logout rejects cross-origin', async () => {
     const bad = new NextRequest('http://localhost:3000/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json', origin: 'https://evil.example' }, body: '{}' });
     expect((await logout(bad)).status).toBe(403);

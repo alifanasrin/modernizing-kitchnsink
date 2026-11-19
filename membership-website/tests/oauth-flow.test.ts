@@ -20,8 +20,8 @@ const jreq = (path: string, body: unknown) =>
 const tokens = { accessToken: 'AT', tokenType: 'Bearer', expiresIn: 900, refreshToken: 'sid.RT', sessionId: 'sid' };
 
 describe('GET /api/oauth/start', () => {
-  it('calls authorize with S256 challenge, stores verifier, redirects to /login?request_id', async () => {
-    fetchMock.mockResolvedValue(new Response(null, { status: 302, headers: { Location: 'http://localhost:3000/login?request_id=abc%20123' } }));
+  it('calls authorize with S256 challenge, stores verifier, redirects to the auth service login page', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 302, headers: { Location: 'http://localhost:8080/login?request_id=abc%20123' } }));
     const res = await start(nreq('/api/oauth/start'));
     const [url, init] = fetchMock.mock.calls[0];
     const u = new URL(String(url));
@@ -37,25 +37,25 @@ describe('GET /api/oauth/start', () => {
     expect(u.searchParams.get('code_challenge')).toBe(await challengeFor(verifier));
     expect(res.headers.get('set-cookie')).toMatch(/HttpOnly/i);
     expect(res.cookies.get('oauth-request')?.value).toBe('abc 123');
-    expect(new URL(res.headers.get('location')!).search).toBe('?request_id=abc%20123');
+    expect(res.headers.get('location')).toBe('http://localhost:8080/login?request_id=abc%20123');
   });
 
   it('sends no state when the user did not come from another page', async () => {
-    fetchMock.mockResolvedValue(new Response(null, { status: 302, headers: { Location: 'http://localhost:3000/login?request_id=r1' } }));
+    fetchMock.mockResolvedValue(new Response(null, { status: 302, headers: { Location: 'http://localhost:8080/login?request_id=r1' } }));
     const res = await start(nreq('/api/oauth/start'));
     expect(new URL(String(fetchMock.mock.calls[0][0])).searchParams.has('state')).toBe(false);
     expect(res.cookies.get('oauth-state')?.value).toBe('');
   });
 
   it('sends state (the origin page) and remembers it', async () => {
-    fetchMock.mockResolvedValue(new Response(null, { status: 302, headers: { Location: 'http://localhost:3000/login?request_id=r1' } }));
+    fetchMock.mockResolvedValue(new Response(null, { status: 302, headers: { Location: 'http://localhost:8080/login?request_id=r1' } }));
     const res = await start(nreq('/api/oauth/start?state=' + encodeURIComponent('/members')));
     expect(new URL(String(fetchMock.mock.calls[0][0])).searchParams.get('state')).toBe('/members');
     expect(res.cookies.get('oauth-state')?.value).toBe('/members');
   });
 
   it.each(['/login', '/', '/api/oauth/start', 'https://evil.example', '//evil.example'])('does not send state %s', async (st) => {
-    fetchMock.mockResolvedValue(new Response(null, { status: 302, headers: { Location: 'http://localhost:3000/login?request_id=r1' } }));
+    fetchMock.mockResolvedValue(new Response(null, { status: 302, headers: { Location: 'http://localhost:8080/login?request_id=r1' } }));
     await start(nreq('/api/oauth/start?state=' + encodeURIComponent(st)));
     expect(new URL(String(fetchMock.mock.calls[0][0])).searchParams.has('state')).toBe(false);
   });
@@ -68,9 +68,9 @@ describe('GET /api/oauth/start', () => {
   });
 
   it('redirects with an error when authorize gives no request_id', async () => {
-    fetchMock.mockResolvedValue(new Response(null, { status: 302, headers: { Location: 'http://localhost:3000/login' } }));
+    fetchMock.mockResolvedValue(new Response(null, { status: 302, headers: { Location: 'http://localhost:8080/login' } }));
     const res = await start(nreq('/api/oauth/start'));
-    expect(res.headers.get('location')).toContain('/login?error=authorize_failed');
+    expect(res.headers.get('location')).toBe('http://localhost:3000/?error=authorize_failed');
     expect(res.cookies.get('pkce-verifier')).toBeUndefined();
   });
 
@@ -119,7 +119,7 @@ describe('GET /api/oauth/callback', () => {
   });
   it('goes back to login without calling the backend when code or verifier is missing', async () => {
     const res = await callback(nreq('/callback?code=CODE'));
-    expect(res.headers.get('location')).toContain('/login?error=token_failed');
+    expect(res.headers.get('location')).toBe('http://localhost:3000/?error=token_failed');
     expect(fetchMock).not.toHaveBeenCalled();
   });
   it('goes back to login when the token endpoint refuses', async () => {
@@ -147,13 +147,13 @@ describe('GET /api/auth/refresh', () => {
   it('clears cookies and goes to login when refresh fails', async () => {
     fetchMock.mockResolvedValue(new Response('{}', { status: 401 }));
     const res = await refresh(nreq('/api/auth/refresh?next=/members', 'refresh-token=old'));
-    expect(res.headers.get('location')).toBe('http://localhost:3000/login?state=%2Fmembers');
+    expect(res.headers.get('location')).toBe('http://localhost:3000/api/oauth/start?state=%2Fmembers');
     expect(res.cookies.get('access-token')?.value).toBe('');
     expect(res.cookies.get('refresh-token')?.value).toBe('');
   });
   it('goes to login without a refresh cookie', async () => {
     const res = await refresh(nreq('/api/auth/refresh?next=/members'));
-    expect(res.headers.get('location')).toBe('http://localhost:3000/login?state=%2Fmembers');
+    expect(res.headers.get('location')).toBe('http://localhost:3000/api/oauth/start?state=%2Fmembers');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

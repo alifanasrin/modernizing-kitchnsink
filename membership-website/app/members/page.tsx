@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import PageSizeSelect from './PageSizeSelect';
-import LogoutButton from './LogoutButton';
+import MemberShell from '../components/MemberShell';
 import { logger } from '@/lib/logger';
 import { reauthTarget } from '@/lib/session';
 import { BadGatewayError, DEFAULT_PAGE_SIZE, FIRST_PAGE, PAGE_SIZES, PageNotFoundError, UnauthorizedError, fetchMembers } from '@/lib/members';
@@ -37,13 +37,15 @@ export default async function MembersPage({
     }
     if (e instanceof BadGatewayError) {
       return (
-        <main className="auth-page">
-          <div className="auth-card">
-            <h1>502 – Bad Gateway</h1>
-            <p className="auth-subtitle">The backend server could not be reached. Please try again later.</p>
-            <Link href="/members">Retry</Link>
-          </div>
-        </main>
+        <MemberShell>
+          <h1>502 – Bad Gateway</h1>
+          <p className="hero-sub">The backend server could not be reached. Please try again later.</p>
+          <p>
+            <Link href="/members" className="btn-secondary hero-btn">
+              Retry
+            </Link>
+          </p>
+        </MemberShell>
       );
     }
     throw e;
@@ -57,12 +59,10 @@ export default async function MembersPage({
   const hasNext = pageNo < lastPage;
 
   return (
-    <main className="page">
-      <header className="page-header">
-        <h1>Members</h1>
-        <LogoutButton />
-      </header>
-      <div className="card">
+    <MemberShell wide>
+      <p className="hero-kicker">Community</p>
+      <h1>Members</h1>
+      <div className="members-card">
         {data.length === 0 ? (
           <p className="empty">No members found.</p>
         ) : (
@@ -102,7 +102,7 @@ export default async function MembersPage({
           <PageSizeSelect sizes={PAGE_SIZES} current={pageSize} firstPage={FIRST_PAGE} />
         </span>
       </nav>
-    </main>
+    </MemberShell>
   );
 }
 

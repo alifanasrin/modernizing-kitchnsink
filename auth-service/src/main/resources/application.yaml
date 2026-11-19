@@ -12,6 +12,18 @@ spring:
     uri: mongodb://localhost:27017
     database: auth-db
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer # the service writes the JSON itself
+      acks: all # the broker confirms only once the record is safely replicated
+      properties:
+        enable.idempotence: true # a producer retry never writes the record twice
+    template:
+      # the `traceparent` header travels with the record, so member-service continues the registration's trace
+      observation-enabled: true
+
 mongock:
   migration-scan-package:
     - kitchen.sink.demo.migration
@@ -53,9 +65,15 @@ management:
       show-details: always
 
 app:
+  kafka:
+    topic:
+      # member-registered events consumed by member-service (key = auth member id)
+      member-registered: ${MEMBER_REGISTERED_TOPIC:member.registered}
+      partitions: 3
+      replicas: 1
   oauth:
     # the front-end login page the authorization endpoint redirects to, with ?request_id=...
-    login-url: ${OAUTH_LOGIN_URL:http://localhost:3000/login}
+    login-url: ${OAUTH_LOGIN_URL:http://localhost:8080/login}
   security:
     jwt:
       # RS256 key pair: the PEM contents (not file paths) of the JWT_PRIVATE_KEY (PKCS#8, signs) and JWT_PUBLIC_KEY

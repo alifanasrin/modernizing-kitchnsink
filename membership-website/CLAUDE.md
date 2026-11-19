@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Next.js 15 App Router + TypeScript frontend (registration, login, members list). Backend is a separate service on `localhost:8080`. See `README.md` for endpoints and setup.
+Next.js 15 App Router + TypeScript frontend (welcome page, members list; login and register are hosted by the auth service, not here). Auth backend is a separate service on `localhost:8080`; members are read from the member service on `localhost:8081`. See `README.md` for endpoints and setup.
 
 ## Commands
 
@@ -11,12 +11,12 @@ Next.js 15 App Router + TypeScript frontend (registration, login, members list).
 ## Conventions
 
 - App Router only (`app/`), never Pages Router. Server Components by default; `'use client'` only on leaf components that need interactivity (forms, page-size select).
-- **All request payloads are JSON, never FormData.** No server actions for forms. Forms `fetch` JSON to `app/api/*/route.ts` handlers, which validate and proxy to the backend.
+- **This app hosts no login or register page/form.** `/` is the welcome page: **Login** is a link to `/api/oauth/start` (calls `/oauth2/authorize`, then redirects to the login page the auth service names), **Register** links to the auth service's `/register` (`REGISTER_PAGE_URL`). Any redirect that used to go to `/login` goes to `/api/oauth/start`; flow errors go to `/?error=...`.
+- **All request payloads are JSON, never FormData.** No server actions for forms. Any `fetch` from the browser goes to `app/api/*/route.ts` handlers, which proxy to the backend.
 - The browser never calls `localhost:8080` directly; always go through a route handler or server component.
-- Validation lives in `lib/validation.ts` and is shared by client forms and route handlers. Rules: name ≤ 25 chars; email valid format; phone 10–12 digits only; password required. Client errors show live while typing and persist until fixed; submit is disabled while invalid.
 - **Never show raw backend error JSON in the UI.** Route handlers extract a clean message (strip `field: ` prefix); 5xx and unparseable bodies get a generic message.
-- Login saves the backend's `access-token` Set-Cookie as an HttpOnly cookie via the login route handler. `lib/members.ts` reads it server-side and sends `Authorization: Bearer <token>` to `GET /members`.
-- Missing cookie or 401/403 from members → redirect to `/login`. Out-of-range page or backend 404 → `notFound()`.
+- `/callback` exchanges the code for tokens and saves them as HttpOnly cookies. `lib/members.ts` reads it server-side and sends `Authorization: Bearer <token>` to `GET /members`.
+- Missing cookie or 401/403 from members → re-authenticate (refresh, else `/api/oauth/start`). Out-of-range page or backend 404 → `notFound()`.
 - Every async route segment needs `loading.tsx` and `error.tsx`.
 - Use the `metadata` export for titles/SEO, not hardcoded `<title>`.
 - Backend URLs and the members first-page number are env-configurable (see README); defaults point to localhost:8080 and 1-based pages.
@@ -27,5 +27,5 @@ Tests are in `tests/` (Vitest, jsdom, React Testing Library). Mock `fetch` with 
 
 ## Gotchas
 
-- A temporary `console.log('[TEMP] access-token ...')` is in `app/api/login/route.ts` (marked `TODO: remove`). Don't add more token logging, and remove this one when the user says so.
+- Don't add token logging anywhere.
 - Backend response/auth assumptions (cookie name `access-token`, Bearer scheme, 1-based paging) were assumed, not confirmed. Check with the user if something behaves unexpectedly.
