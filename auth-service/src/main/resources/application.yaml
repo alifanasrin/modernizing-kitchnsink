@@ -69,8 +69,6 @@ app:
     topic:
       # member-registered events consumed by member-service (key = auth member id)
       member-registered: ${MEMBER_REGISTERED_TOPIC:member.registered}
-      partitions: 3
-      replicas: 1
   oauth:
     # the front-end login page the authorization endpoint redirects to, with ?request_id=...
     login-url: ${OAUTH_LOGIN_URL:http://localhost:8080/login}
