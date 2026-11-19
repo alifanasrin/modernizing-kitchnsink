@@ -8,23 +8,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-import java.time.Instant;
-
 /**
- * The member-registered message published by auth-service (contract v1.x). Unknown fields are ignored so an additive
- * minor version does not break this consumer. {@code toString} leaves the member's data out (PII).
+ * The member-registered message published by auth-service. Unknown fields are ignored so an additive
+ * change does not break this consumer. {@code toString} leaves the member's data out (PII).
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record MemberRegisteredEvent(
-        @NotBlank String eventId,
-        @NotBlank String eventType,
-        @NotBlank String schemaVersion,
-        String source,
-        Instant occurredAt,
         @NotNull @Valid Data data) {
-
-    public static final String EVENT_TYPE = "MEMBER_REGISTERED";
-    public static final String SUPPORTED_MAJOR_VERSION = "1";
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Data(
@@ -41,6 +31,6 @@ public record MemberRegisteredEvent(
 
     @Override
     public String toString() {
-        return "MemberRegisteredEvent[eventId=" + eventId + ", eventType=" + eventType + "]";
+        return "MemberRegisteredEvent[memberId=" + (data == null ? null : data.memberId()) + "]";
     }
 }

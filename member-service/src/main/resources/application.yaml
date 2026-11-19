@@ -55,6 +55,22 @@ app:
       audience: ${JWT_AUDIENCE:memeber-service}
 
 management:
+  tracing:
+    propagation:
+      # W3C `traceparent` header: read from incoming requests/records (consume) and added to outgoing calls (produce)
+      type: w3c
+    sampling:
+      # 1.0 = trace every request; lower it in busy environments
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      # Despite the name, this switch is what turns tracing on (trace ids in logs, traceparent propagation).
+      # Nothing leaves the process: no span exporter (OTLP, Zipkin) is on the classpath, so do not add one.
+      enabled: true
+  logging:
+    export:
+      otlp:
+        # logs are not exported either
+        enabled: false
   endpoint:
     health:
       show-details: when-authorized

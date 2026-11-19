@@ -15,29 +15,27 @@ class MemberEventParserImplTest {
     final MemberEventParserImpl parser = new MemberEventParserImpl(JsonMapper.builder().build(),
             Validation.buildDefaultValidatorFactory().getValidator());
 
-    static String payload(String eventType, String version, String email, String phone) {
+    static String payload(String email, String phone) {
         return """
-                {"eventId":"e1","eventType":"%s","schemaVersion":"%s","source":"auth-service",
-                 "occurredAt":"2026-11-19T10:00:00Z",
-                 "data":{"memberId":"64f0","email":"%s","phoneNo":"%s","firstName":"Ann","lastName":"Lee"}}
-                """.formatted(eventType, version, email, phone);
+                {"data":{"memberId":"64f0","email":"%s","phoneNo":"%s","firstName":"Ann","lastName":"Lee"}}
+                """.formatted(email, phone);
     }
 
     @Test
     @Tag("critical")
     void shouldParseValidEvent() {
-        MemberRegisteredEvent event = parser.parse(payload("MEMBER_REGISTERED", "1.0", "ann@example.com", "1234567890"));
+        MemberRegisteredEvent event = parser.parse(payload("ann@example.com", "1234567890"));
 
         assertThat(event.data().email()).isEqualTo("ann@example.com");
         assertThat(event.data().firstName()).isEqualTo("Ann");
     }
 
     @Test
-    void shouldAcceptNewerMinorVersionAndUnknownFields() {
-        String json = payload("MEMBER_REGISTERED", "1.4", "ann@example.com", "1234567890")
-                .replace("\"source\"", "\"extra\":true,\"source\"");
+    void shouldIgnoreUnknownFields() {
+        String json = payload("ann@example.com", "1234567890")
+                .replace("\"data\"", "\"extra\":true,\"source\":\"x\",\"data\"");
 
-        assertThat(parser.parse(json).schemaVersion()).isEqualTo("1.4");
+        assertThat(parser.parse(json).data().email()).isEqualTo("ann@example.com");
     }
 
     @Test
@@ -47,17 +45,9 @@ class MemberEventParserImplTest {
     }
 
     @Test
-    void shouldRejectUnsupportedTypeAndMajorVersion() {
-        assertThatThrownBy(() -> parser.parse(payload("OTHER", "1.0", "ann@example.com", "1234567890")))
-                .isInstanceOf(InvalidMemberEventException.class).hasMessageContaining("eventType");
-        assertThatThrownBy(() -> parser.parse(payload("MEMBER_REGISTERED", "2.0", "ann@example.com", "1234567890")))
-                .isInstanceOf(InvalidMemberEventException.class).hasMessageContaining("schemaVersion");
-    }
-
-    @Test
     @Tag("critical")
     void shouldRejectInvalidData_withoutLeakingValues() {
-        assertThatThrownBy(() -> parser.parse(payload("MEMBER_REGISTERED", "1.0", "not-an-email", "12ab")))
+        assertThatThrownBy(() -> parser.parse(payload("not-an-email", "12ab")))
                 .isInstanceOf(InvalidMemberEventException.class)
                 .hasMessageContaining("data.email")
                 .hasMessageContaining("data.phoneNo")

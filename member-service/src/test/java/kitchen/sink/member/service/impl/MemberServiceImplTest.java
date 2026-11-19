@@ -13,6 +13,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +25,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -100,5 +103,40 @@ class MemberServiceImplTest {
         assertThatThrownBy(() -> service.findByEmail("nobody@example.com"))
                 .isInstanceOf(MemberNotFoundException.class)
                 .hasMessage("Member Not Found with email nobody@example.com");
+    }
+
+    @Test
+    void shouldSaveMemberAndReturnTrue_whenMemberIsNew() {
+        Member member = new Member(null, "ann@example.com", "1234567890", "Ann", "Lee");
+
+        boolean created = service.createMember(member);
+
+        assertThat(created).isTrue();
+        verify(memberRepository).save(member);
+    }
+
+    @Test
+    void shouldReturnFalse_whenSpringTranslatesTheDuplicateKey() {
+        // MongoRepository.save throws Spring's DuplicateKeyException (the unique email index), not the driver's
+        Member member = ann();
+        when(memberRepository.save(member)).thenThrow(new DuplicateKeyException("E11000 duplicate key"));
+
+        assertThat(service.createMember(member)).isFalse();
+    }
+
+    @Test
+    void shouldPropagateTheException_whenSaveFailsForAnotherReason() {
+        Member member = ann();
+        when(memberRepository.save(member)).thenThrow(new DataAccessResourceFailureException("mongo down"));
+
+        assertThatThrownBy(() -> service.createMember(member))
+                .isInstanceOf(DataAccessResourceFailureException.class);
+    }
+
+    @Test
+    void shouldNotTouchTheRepositoryForReads_whenCreatingAMember() {
+        service.createMember(ann());
+
+        verify(memberRepository, never()).findByEmail(any());
     }
 }

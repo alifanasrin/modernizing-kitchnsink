@@ -1,17 +1,10 @@
 package kitchen.sink.demo.event;
 
-import java.time.Instant;
-
 /**
- * The Kafka message on the member-registered topic (contract v1.0, also read by member-service). Additive changes
- * bump the minor {@code schemaVersion}; the consumer accepts any {@code 1.x}.
+ * The Kafka message on the member-registered topic (also read by member-service). The consumer ignores unknown
+ * fields, so additive changes are safe.
  */
-public record MemberRegisteredMessage(String eventId, String eventType, String schemaVersion, String source,
-                                      Instant occurredAt, Data data) {
-
-    public static final String EVENT_TYPE = "MEMBER_REGISTERED";
-    public static final String SCHEMA_VERSION = "1.0";
-    public static final String SOURCE = "auth-service";
+public record MemberRegisteredMessage(Data data) {
 
     /** The member as registered; never the password or its hash. */
     public record Data(String memberId, String email, String phoneNo, String firstName, String lastName) {

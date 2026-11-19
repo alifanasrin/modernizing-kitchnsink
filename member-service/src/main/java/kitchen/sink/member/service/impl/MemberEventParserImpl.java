@@ -38,12 +38,6 @@ public class MemberEventParserImpl implements MemberEventParser {
             throw new InvalidMemberEventException("Invalid event: " + violations.stream()
                     .map(v -> v.getPropertyPath() + " " + v.getMessage()).sorted().collect(Collectors.joining(", ")));
         }
-        if (!MemberRegisteredEvent.EVENT_TYPE.equals(event.eventType())) {
-            throw new InvalidMemberEventException("Unsupported eventType: " + event.eventType());
-        }
-        if (!event.schemaVersion().startsWith(MemberRegisteredEvent.SUPPORTED_MAJOR_VERSION + ".")) {
-            throw new InvalidMemberEventException("Unsupported schemaVersion: " + event.schemaVersion());
-        }
         return event;
     }
 }

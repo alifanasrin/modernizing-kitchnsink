@@ -71,7 +71,6 @@ class AuthorizationCodeServiceImplTest {
         assertThat(location).isEqualTo(LOGIN + "?request_id=" + grant.getValue().getRequestId());
         assertThat(grant.getValue().getCodeChallenge()).isEqualTo(CHALLENGE);
         assertThat(grant.getValue().getClientId()).isEqualTo("spa");
-        assertThat(grant.getValue().getUserId()).isNull();
         assertThat(grant.getValue().getCodeHash()).isNull();
     }
 

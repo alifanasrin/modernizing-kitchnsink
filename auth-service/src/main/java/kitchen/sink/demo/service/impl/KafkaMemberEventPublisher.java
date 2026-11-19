@@ -11,9 +11,6 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.time.Clock;
-import java.util.UUID;
-
 /**
  * Publishes {@link MemberRegistered} to Kafka for member-service, after the registration has committed (so a
  * rolled-back registration never produces an event). {@code fallbackExecution} keeps it working when there is no
@@ -30,21 +27,18 @@ public class KafkaMemberEventPublisher {
 
     private final KafkaOperations<String, String> kafka;
     private final JsonMapper jsonMapper;
-    private final Clock clock;
     private final String topic;
 
-    public KafkaMemberEventPublisher(KafkaOperations<String, String> kafka, JsonMapper jsonMapper, Clock clock,
+    public KafkaMemberEventPublisher(KafkaOperations<String, String> kafka, JsonMapper jsonMapper,
                                      @Value("${app.kafka.topic.member-registered}") String topic) {
         this.kafka = kafka;
         this.jsonMapper = jsonMapper;
-        this.clock = clock;
         this.topic = topic;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onMemberRegistered(MemberRegistered registered) {
-        var message = new MemberRegisteredMessage(UUID.randomUUID().toString(), MemberRegisteredMessage.EVENT_TYPE,
-                MemberRegisteredMessage.SCHEMA_VERSION, MemberRegisteredMessage.SOURCE, clock.instant(),
+        var message = new MemberRegisteredMessage(
                 new MemberRegisteredMessage.Data(registered.memberId(), registered.email(), registered.phoneNo(),
                         registered.firstName(), registered.lastName()));
         try {
@@ -52,16 +46,14 @@ public class KafkaMemberEventPublisher {
             kafka.send(topic, registered.memberId(), jsonMapper.writeValueAsString(message))
                     .whenComplete((result, error) -> {
                         if (error != null) {
-                            log.error("member-registered event {} for member {} was not published",
-                                    message.eventId(), registered.memberId(), error);
+                            log.error("member-registered event for member {} was not published", registered.memberId(), error);
                         } else {
-                            log.info("member-registered event {} for member {} published to partition {}",
-                                    message.eventId(), registered.memberId(), result.getRecordMetadata().partition());
+                            log.info("member-registered event for member {} published to partition {}",
+                                    registered.memberId(), result.getRecordMetadata().partition());
                         }
                     });
         } catch (RuntimeException e) {
-            log.error("member-registered event {} for member {} was not published",
-                    message.eventId(), registered.memberId(), e);
+            log.error("member-registered event for member {} was not published", registered.memberId(), e);
         }
     }
 }

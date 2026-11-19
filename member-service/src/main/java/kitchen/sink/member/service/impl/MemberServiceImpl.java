@@ -1,5 +1,6 @@
 package kitchen.sink.member.service.impl;
 
+import org.springframework.dao.DuplicateKeyException;
 import kitchen.sink.member.dto.request.MemberRequest;
 import kitchen.sink.member.dto.response.MemberResponse;
 import kitchen.sink.member.dto.response.PaginatedResponse;
@@ -30,7 +31,7 @@ public class MemberServiceImpl implements MemberService {
     /** Reads one page of members sorted by last and first name and maps it to a response. */
     @Override
     public PaginatedResponse<MemberResponse> getMembers(MemberRequest memberRequest) {
-        log.debug("listing members, pageNo={}, pageSize={}", memberRequest.pageNo(), memberRequest.pageSize());
+        log.info("listing members, pageNo={}, pageSize={}", memberRequest.pageNo(), memberRequest.pageSize());
         PageRequest pageRequest = PageRequest.of(memberRequest.pageNo() - 1, memberRequest.pageSize());
         Page<Member> memberPage = memberRepository.findAllByOrderByLastNameAscFirstNameAsc(pageRequest);
         List<MemberResponse> memberResponses = memberPage.getContent().stream().map(MemberResponse::from).toList();
@@ -41,9 +42,21 @@ public class MemberServiceImpl implements MemberService {
     /** Finds the member by email address or throws if none exists. */
     @Override
     public MemberResponse findByEmail(String email) {
-        log.debug("looking up a member by email");
+        log.info("looking up a member by email");
         Member member = memberRepository.findByEmail(EmailNormalizer.normalize(email)).orElseThrow(() ->
                 new MemberNotFoundException("Member Not Found with email " + email));
         return MemberResponse.from(member);
+    }
+
+    @Override
+    public boolean createMember(Member member) {
+       log.info("create a member");
+       try {
+           memberRepository.save(member);
+           return true;
+       }catch (DuplicateKeyException exception){
+           log.debug("such a member already exist");
+           return false;
+       }
     }
 }

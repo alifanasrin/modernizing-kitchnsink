@@ -1,9 +1,8 @@
 package kitchen.sink.member.listener;
 
 import kitchen.sink.member.entity.Member;
-import kitchen.sink.member.repository.MemberStore;
+import kitchen.sink.member.service.MemberService;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -18,7 +17,6 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.Duration;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,7 +24,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
-/** Real listener container and error handler on an embedded broker; only the MongoDB store is mocked. */
+/** Real listener container and error handler on an embedded broker; only the member service is mocked. */
 @SpringBootTest
 @EmbeddedKafka(partitions = 1, topics = {"member.registered", "member.registered.DLT"})
 @TestPropertySource(locations = "classpath:jwt-test.properties", properties = {
@@ -38,17 +36,16 @@ class MemberRegisteredKafkaIntegrationTest {
 
     @Autowired KafkaTemplate<String, String> kafka;
     @Autowired EmbeddedKafkaBroker broker;
-    @MockitoBean MemberStore store;
+    @MockitoBean MemberService memberService;
 
     @Test
     @Tag("critical")
     void shouldCreateMember_whenValidEventIsPublished() {
         kafka.send("member.registered", "64f0", """
-                {"eventId":"e1","eventType":"MEMBER_REGISTERED","schemaVersion":"1.0","source":"auth-service",
-                 "data":{"memberId":"64f0","email":"ann@example.com","phoneNo":"1234567890","firstName":"Ann","lastName":"Lee"}}
+                {"data":{"memberId":"64f0","email":"ann@example.com","phoneNo":"1234567890","firstName":"Ann","lastName":"Lee"}}
                 """);
 
-        verify(store, timeout(10_000)).createIfAbsent(new Member(null, "ann@example.com", "1234567890", "Ann", "Lee"));
+        verify(memberService, timeout(10_000)).createMember(new Member(null, "ann@example.com", "1234567890", "Ann", "Lee"));
     }
 
     @Test
@@ -63,6 +60,6 @@ class MemberRegisteredKafkaIntegrationTest {
             var record = KafkaTestUtils.getSingleRecord(dlt, "member.registered.DLT", Duration.ofSeconds(15));
             assertThat(record.value()).isEqualTo("this is not json");
         }
-        verify(store, never()).createIfAbsent(any());
+        verify(memberService, never()).createMember(any());
     }
 }

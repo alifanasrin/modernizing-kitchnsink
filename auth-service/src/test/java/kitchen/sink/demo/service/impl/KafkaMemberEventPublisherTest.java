@@ -13,9 +13,6 @@ import org.springframework.kafka.support.SendResult;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,7 +25,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class KafkaMemberEventPublisherTest {
 
-    static final Instant NOW = Instant.parse("2026-11-19T10:00:00Z");
     static final MemberRegistered REGISTERED =
             new MemberRegistered("64f0", "ann@example.com", "1234567890", "Ann", "Lee");
 
@@ -39,8 +35,7 @@ class KafkaMemberEventPublisherTest {
 
     @BeforeEach
     void setUp() {
-        publisher = new KafkaMemberEventPublisher(kafka, JsonMapper.builder().build(),
-                Clock.fixed(NOW, ZoneOffset.UTC), "member.registered");
+        publisher = new KafkaMemberEventPublisher(kafka, JsonMapper.builder().build(), "member.registered");
     }
 
     @Test
@@ -54,10 +49,6 @@ class KafkaMemberEventPublisherTest {
         ArgumentCaptor<String> payload = ArgumentCaptor.forClass(String.class);
         verify(kafka).send(eq("member.registered"), eq("64f0"), payload.capture());
         JsonNode json = JsonMapper.builder().build().readTree(payload.getValue());
-        assertThat(json.get("eventType").asString()).isEqualTo("MEMBER_REGISTERED");
-        assertThat(json.get("schemaVersion").asString()).isEqualTo("1.0");
-        assertThat(json.get("source").asString()).isEqualTo("auth-service");
-        assertThat(json.get("eventId").asString()).isNotBlank();
         assertThat(json.get("data").get("email").asString()).isEqualTo("ann@example.com");
         assertThat(json.get("data").get("firstName").asString()).isEqualTo("Ann");
         assertThat(payload.getValue()).doesNotContainIgnoringCase("password");

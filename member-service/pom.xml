@@ -33,6 +33,15 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
+		<!-- Trace ids for logs and traceparent propagation only; no exporter on the classpath, nothing is exported -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-micrometer-tracing-opentelemetry</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-tracing-bridge-otel</artifactId>
+		</dependency>
 		<!-- Consumes the member-registered events published by auth-service -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

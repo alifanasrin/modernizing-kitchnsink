@@ -3,8 +3,8 @@ package kitchen.sink.member.service.impl;
 import kitchen.sink.member.entity.Member;
 import kitchen.sink.member.event.MemberRegisteredEvent;
 import kitchen.sink.member.exception.InvalidMemberEventException;
-import kitchen.sink.member.repository.MemberStore;
 import kitchen.sink.member.service.MemberEventParser;
+import kitchen.sink.member.service.MemberService;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,11 +24,11 @@ import static org.mockito.Mockito.when;
 class MemberRegistrationServiceImplTest {
 
     @Mock MemberEventParser parser;
-    @Mock MemberStore store;
+    @Mock MemberService memberService;
     @InjectMocks MemberRegistrationServiceImpl service;
 
     static MemberRegisteredEvent event() {
-        return new MemberRegisteredEvent("e1", "MEMBER_REGISTERED", "1.0", "auth-service", null,
+        return new MemberRegisteredEvent(
                 new MemberRegisteredEvent.Data("64f0", " Ann@Example.com ", "1234567890", "Ann", "Lee"));
     }
 
@@ -36,31 +36,31 @@ class MemberRegistrationServiceImplTest {
     @Tag("critical")
     void shouldCreateMemberWithNormalizedEmail() {
         when(parser.parse("payload")).thenReturn(event());
-        when(store.createIfAbsent(any())).thenReturn(true);
+        when(memberService.createMember(any())).thenReturn(true);
 
         service.process("payload");
 
         ArgumentCaptor<Member> saved = ArgumentCaptor.forClass(Member.class);
-        verify(store).createIfAbsent(saved.capture());
+        verify(memberService).createMember(saved.capture());
         assertThat(saved.getValue()).isEqualTo(new Member(null, "ann@example.com", "1234567890", "Ann", "Lee"));
     }
 
     @Test
     void shouldNotFail_whenMemberAlreadyExists() {
         when(parser.parse("payload")).thenReturn(event());
-        when(store.createIfAbsent(any())).thenReturn(false);
+        when(memberService.createMember(any())).thenReturn(false);
 
         service.process("payload");
 
-        verify(store).createIfAbsent(any());
+        verify(memberService).createMember(any());
     }
 
     @Test
     @Tag("critical")
-    void shouldNotTouchTheStore_whenPayloadIsInvalid() {
+    void shouldNotCreateAMember_whenPayloadIsInvalid() {
         when(parser.parse("bad")).thenThrow(new InvalidMemberEventException("Malformed event payload"));
 
         assertThatThrownBy(() -> service.process("bad")).isInstanceOf(InvalidMemberEventException.class);
-        verify(store, never()).createIfAbsent(any());
+        verify(memberService, never()).createMember(any());
     }
 }
