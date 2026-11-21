@@ -24,9 +24,9 @@ public interface AuthorizationGrantStore {
     /** Marks the unexpired grant for this code hash as USED and returns it; only one caller can ever get it. */
     Optional<AuthorizationGrant> consumeCode(String codeHash, Instant now);
 
-    /** Returns the grant of this code hash if the code has already been used (until its TTL removes it). */
+    /** Returns the grant of this code hash if the code has already been used (until its TTL removes it). Not used by the token exchange: a replayed code is only refused. */
     Optional<AuthorizationGrant> findUsed(String codeHash);
 
-    /** Records the session the grant's code was exchanged for. */
+    /** Records the session the grant's code was exchanged for (a record only, nothing revokes by it). */
     void attachSession(String grantId, String sessionId);
 }

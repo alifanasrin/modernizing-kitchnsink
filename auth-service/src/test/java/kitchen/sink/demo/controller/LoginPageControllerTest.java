@@ -30,8 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** The hosted /login and /register pages, run through the real filter chain (they must be public, no CSRF token). */
-@WebMvcTest(LoginPageController.class)
-@ContextConfiguration(classes = {LoginPageController.class, SecurityConfig.class, JwtConfig.class, JwtService.class})
+@WebMvcTest(PageController.class)
+@ContextConfiguration(classes = {PageController.class, SecurityConfig.class, JwtConfig.class, JwtService.class})
 @TestPropertySource(locations = "classpath:jwt-test.properties")
 class LoginPageControllerTest {
 
@@ -44,7 +44,7 @@ class LoginPageControllerTest {
     void loginPage_withRequest_rendersFormWithEscapedRequestId() throws Exception {
         mockMvc.perform(get("/login").param("request_id", "<b>\"x"))
                 .andExpect(status().isOk()).andExpect(view().name("login"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"request_id\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"requestId\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("<b>\"x"))));
     }
 
@@ -84,7 +84,7 @@ class LoginPageControllerTest {
                 .thenReturn(new AuthorizationCodeResponse("https://app.example/cb?code=abc&iss=x", 60));
 
         mockMvc.perform(post("/login").contentType("application/x-www-form-urlencoded")
-                        .param("email", "ann@example.com").param("password", PASSWORD).param("request_id", "req-1"))
+                        .param("email", "ann@example.com").param("password", PASSWORD).param("requestId", "req-1"))
                 .andExpect(status().isFound())
                 .andExpect(header().string("Location", "https://app.example/cb?code=abc&iss=x"))
                 .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
@@ -97,7 +97,7 @@ class LoginPageControllerTest {
                 .thenThrow(new AuthenticationFailedException("Invalid email or password"));
 
         mockMvc.perform(post("/login").contentType("application/x-www-form-urlencoded")
-                        .param("email", "ann@example.com").param("password", PASSWORD).param("request_id", "req 1&x"))
+                        .param("email", "ann@example.com").param("password", PASSWORD).param("requestId", "req 1&x"))
                 .andExpect(status().isSeeOther())
                 .andExpect(header().string("Location", "/login?request_id=req%201%26x&error=invalid"));
     }
@@ -108,14 +108,14 @@ class LoginPageControllerTest {
                 .thenThrow(new InvalidAuthorizationRequestException("expired"));
 
         mockMvc.perform(post("/login").contentType("application/x-www-form-urlencoded")
-                        .param("email", "ann@example.com").param("password", PASSWORD).param("request_id", "req-1"))
+                        .param("email", "ann@example.com").param("password", PASSWORD).param("requestId", "req-1"))
                 .andExpect(header().string("Location", "/login?request_id=req-1&error=expired"));
     }
 
     @Test
     void login_invalidInput_isRefusedBeforeAuthService() throws Exception {
         mockMvc.perform(post("/login").contentType("application/x-www-form-urlencoded")
-                        .param("email", "not-an-email").param("password", "short").param("request_id", "req-1"))
+                        .param("email", "not-an-email").param("password", "short").param("requestId", "req-1"))
                 .andExpect(status().isSeeOther())
                 .andExpect(header().string("Location", "/login?request_id=req-1&error=invalid_input"));
         verify(authService, never()).login(any(), eq("127.0.0.1"));
@@ -124,7 +124,7 @@ class LoginPageControllerTest {
     @Test
     void login_oversizedRequestId_isNotEchoed() throws Exception {
         mockMvc.perform(post("/login").contentType("application/x-www-form-urlencoded")
-                        .param("email", "ann@example.com").param("password", PASSWORD).param("request_id", "x".repeat(300)))
+                        .param("email", "ann@example.com").param("password", PASSWORD).param("requestId", "x".repeat(300)))
                 .andExpect(header().string("Location", "/login?error=invalid_input"));
     }
 }

@@ -34,7 +34,7 @@ public class AuthorizationGrant {
     /** The Mongo {@code _id} (hex ObjectId) of the authenticated member; null before the password check. */
     private String userId;
 
-    /** The session the code was exchanged for; set after the exchange so a replay of the code can revoke it. */
+    /** The session the code was exchanged for; set after the exchange as a record of the result; a replay of the code does not revoke it. */
     private String sessionId;
 
     private String clientId;

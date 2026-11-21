@@ -60,10 +60,10 @@ public class AuthorizationCodeGrantHandler implements GrantHandler {
 
     @Override
     public void validateMandatoryParams(TokenRequest request) {
-        if(request.code()==null || request.code().isBlank()){
+        if (request.code() == null || request.code().isBlank()) {
             throw new InvalidGrantException(Constant.BAD_GRANT);
         }
-        if(request.codeVerifier()==null || request.codeVerifier().isBlank()){
+        if (request.codeVerifier() == null || request.codeVerifier().isBlank()) {
             throw new InvalidGrantException(Constant.BAD_GRANT);
         }
     }
@@ -78,13 +78,9 @@ public class AuthorizationCodeGrantHandler implements GrantHandler {
     public TokenResponse handle(TokenRequest request, String ipAddress) {
         log.info("authorization code handler service");
         String codeHash = TokenHasher.hash(request.code());
-        AuthorizationGrant grant = grants.consumeCode(codeHash, clock.instant()).orElse(null);
-        if (grant == null) {
-            log.warn("expired or bad authoirzation code requested");
-            // RFC 6749 section 4.1.2: a code used twice is refused and the tokens it already produced are revoked
-            revokeSessionOfReplayedCode(codeHash);
-            throw new InvalidGrantException(Constant.BAD_GRANT);
-        }
+        AuthorizationGrant grant = grants.consumeCode(codeHash, clock.instant())
+                .orElseThrow(() -> new InvalidGrantException(Constant.BAD_GRANT));
+
         if (!grant.getClientId().equals(request.clientId())
                 || !Pkce.matches(request.codeVerifier(), grant.getCodeChallenge())) {
             log.warn("token request refused for client {}", request.clientId());
@@ -92,12 +88,11 @@ public class AuthorizationCodeGrantHandler implements GrantHandler {
         }
         // the client may have been disabled and the member changed since the code was issued
         OAuthClient client = clients.findByClientId(grant.getClientId())
-                .filter(c -> c.allows(grant.getRedirectUri())).orElse(null);
+                .filter(c -> c.allows(grant.getRedirectUri()))
+                .orElseThrow(() -> new InvalidGrantException(Constant.BAD_GRANT));
+
         Member member = memberRepository.findById(grant.getUserId())
                 .orElseThrow(() -> new InvalidGrantException(Constant.BAD_GRANT));
-        if (client == null) {
-            throw new InvalidGrantException(Constant.BAD_GRANT);
-        }
         // the tokens are created first, then the session that remembers them is saved
         IssuedTokens issued = issueTokens(member, client, ipAddress);
         sessionService.start(issued.sessionId(), member.getId(), client.getClientId(), issued.refreshTokenHash(),
@@ -125,16 +120,10 @@ public class AuthorizationCodeGrantHandler implements GrantHandler {
         return new IssuedTokens(sessionId, TokenHasher.hash(refreshSecret), sessionExpiresAt, response);
     }
 
-    /** The tokens for the caller and what the session stores of them: its id and the hash of the refresh secret. */
+    /**
+     * The tokens for the caller and what the session stores of them: its id and the hash of the refresh secret.
+     */
     private record IssuedTokens(String sessionId, String refreshTokenHash, Instant sessionExpiresAt,
                                 TokenResponse response) {
-    }
-
-    /**  RFC 6749 §4.1.2 Revokes the session that an already-used code produced; an unknown or unused code does nothing. */
-    private void revokeSessionOfReplayedCode(String codeHash) {
-        grants.findUsed(codeHash).map(AuthorizationGrant::getSessionId).ifPresent(sessionId -> {
-            log.warn("authorization code replayed, revoking session {}", sessionId);
-            sessionService.revoke(sessionId);
-        });
     }
 }

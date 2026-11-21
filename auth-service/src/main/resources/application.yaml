@@ -30,7 +30,6 @@ mongock:
 
 springdoc:
   swagger-ui:
-    # Show the hand-written spec instead of the one generated from the code
     url: /openapi.yaml
 
 logging:
@@ -46,20 +45,6 @@ management:
     sampling:
       # 1.0 = trace every request; lower it in busy environments
       probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
-    export:
-      # Despite the name, this switch is what turns tracing on (trace ids in logs, traceparent propagation).
-      # Nothing leaves the process: no span exporter (OTLP, Zipkin) is on the classpath, so do not add one.
-      enabled: true
-  logging:
-    export:
-      otlp:
-        # logs are not exported either
-        enabled: false
-  otlp:
-    metrics:
-      export:
-        # metrics are not exported either
-        enabled: false
   endpoint:
     health:
       show-details: always

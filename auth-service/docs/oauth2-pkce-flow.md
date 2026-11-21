@@ -51,7 +51,7 @@ sequenceDiagram
     rect rgba(150,170,170,0.15)
     Note over B,API: 4 · Token exchange
     BFF->>API: POST /oauth2/token<br/>grant_type=authorization_code, code,<br/>client_id, code_verifier
-    Note over API: GrantHandlerFactory picks AuthorizationCodeGrantHandler.<br/>1) Mark code USED atomically (replay of a used code revokes its session).<br/>2) Check client.<br/>3) PKCE: BASE64URL(SHA-256(code_verifier)) must equal the stored challenge.
+    Note over API: GrantHandlerFactory picks AuthorizationCodeGrantHandler.<br/>1) Mark code USED atomically (a used or unknown code is just refused with 400).<br/>2) Check client.<br/>3) PKCE: BASE64URL(SHA-256(code_verifier)) must equal the stored challenge.
     alt any check fails
         API--xBFF: 400 invalid_grant, same message for every refusal<br/>(the code stays burnt: no verifier guessing)
         BFF--xB: Redirect to /login?error=token_failed

@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -100,37 +101,8 @@ class AuthorizationCodeGrantHandlerTest {
                 eq(NOW.plus(java.time.Duration.ofDays(7))));
         order.verify(sessions).start(sessionId, "ABCD2345", "spa", TokenHasher.hash(secret), "1.2.3.4",
                 NOW.plus(java.time.Duration.ofDays(7)));
-        // the session is remembered on the grant, so a replay of the code can revoke it
+        // the session id is recorded on the grant
         verify(grants).attachSession(null, sessionId);
-    }
-
-    @Test
-    @Tag("critical")
-    void handle_revokesTheSessionThatTheCodeAlreadyProduced_whenTheCodeIsReplayed() {
-        when(grants.consumeCode(any(), any())).thenReturn(Optional.empty());
-        AuthorizationGrant used = grant(NOW);
-        org.springframework.test.util.ReflectionTestUtils.setField(used, "sessionId", "sess1");
-        when(grants.findUsed(TokenHasher.hash("c0de"))).thenReturn(Optional.of(used));
-
-        assertThatThrownBy(() -> service.handle(request(VERIFIER), "ip")).isInstanceOf(InvalidGrantException.class);
-
-        verify(sessions).revoke("sess1");
-        verify(sessions, never()).start(any(), any(), any(), any(), any(), any());
-    }
-
-    @Test
-    @Tag("critical")
-    void handle_revokesNothing_whenTheCodeIsUnknownOrNeverProducedASession() {
-        when(grants.consumeCode(any(), any())).thenReturn(Optional.empty());
-        when(grants.findUsed(any())).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.handle(request(VERIFIER), "ip")).isInstanceOf(InvalidGrantException.class);
-
-        AuthorizationGrant usedWithoutSession = grant(NOW);
-        when(grants.findUsed(any())).thenReturn(Optional.of(usedWithoutSession));
-        assertThatThrownBy(() -> service.handle(request(VERIFIER), "ip")).isInstanceOf(InvalidGrantException.class);
-
-        verify(sessions, never()).revoke(any());
     }
 
     @Test
@@ -146,10 +118,13 @@ class AuthorizationCodeGrantHandlerTest {
 
     @Test
     @Tag("critical")
-    void handle_refusesAnUnknownOrUsedCode() {
+    void handle_refusesAnUnknownOrUsedCode_withoutTouchingSessions() {
         when(grants.consumeCode(any(), any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.handle(request(VERIFIER), "ip")).isInstanceOf(InvalidGrantException.class);
+
+        // a replayed code is only refused: no session is revoked or started
+        verifyNoInteractions(sessions);
     }
 
     @Test
@@ -176,7 +151,6 @@ class AuthorizationCodeGrantHandlerTest {
     void handle_refusesWhenTheClientWasDisabledMeanwhile() {
         givenIssuedCode();
         when(clients.findByClientId("spa")).thenReturn(Optional.empty());
-        when(members.findById("ABCD2345")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.handle(request(VERIFIER), "ip")).isInstanceOf(InvalidGrantException.class);
 

@@ -26,19 +26,6 @@ public class AuthController {
         this.authService = authService;
     }
 
-    /**
-     * Checks the request and the password and sends the browser to the client's registered redirect URI with the
-     * one-time authorization code: a 302 whose {@code Location} is {@code redirect_uri?code=...&state=...&iss=...}.
-     * No tokens are issued here (see /oauth2/token).
-     */
-    @PostMapping("/login")
-    ResponseEntity<Void> login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
-        log.debug("login request from {}", http.getRemoteAddr());
-        AuthorizationCodeResponse code = authService.login(request, http.getRemoteAddr());
-        return ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, code.redirectTo())
-                .cacheControl(CacheControl.noStore()).build();
-    }
-
     /** Revokes the session that the bearer access token in the Authorization header belongs to. */
     @PostMapping("/logout")
     ResponseEntity<Void> logout(@RequestHeader("Authorization") String authorization) {

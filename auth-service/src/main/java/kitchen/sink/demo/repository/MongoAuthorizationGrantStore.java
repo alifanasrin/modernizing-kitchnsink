@@ -35,6 +35,7 @@ public class MongoAuthorizationGrantStore implements AuthorizationGrantStore {
     /** Finds an unexpired request that has not been issued a code. */
     @Override
     public Optional<AuthorizationGrant> findOpen(String requestId, Instant now) {
+        log.info("fins open authorization request");
         Query query = new Query(Criteria.where("requestId").is(requestId).and("status").is(Status.REQUESTED)
                 .and("expiresAt").gt(now));
         return Optional.ofNullable(mongoTemplate.findOne(query, AuthorizationGrant.class));
@@ -47,8 +48,8 @@ public class MongoAuthorizationGrantStore implements AuthorizationGrantStore {
         Query query = new Query(Criteria.where("requestId").is(requestId).and("status").is(Status.REQUESTED)
                 .and("expiresAt").gt(now));
         Update update = new Update().set("userId", userId).set("status", Status.CODE_ISSUED).set("codeHash", codeHash).set("expiresAt", codeExpiresAt).unset("requestId");
-        return traced(Optional.ofNullable(mongoTemplate.findAndModify(query, update,
-                FindAndModifyOptions.options().returnNew(true), AuthorizationGrant.class)), "issueCode");
+        return Optional.ofNullable(mongoTemplate.findAndModify(query, update,
+                FindAndModifyOptions.options().returnNew(true), AuthorizationGrant.class));
     }
 
     /** Marks the unexpired issued grant with this code hash as USED and returns it; only one caller can ever get it. */
@@ -56,8 +57,8 @@ public class MongoAuthorizationGrantStore implements AuthorizationGrantStore {
     public Optional<AuthorizationGrant> consumeCode(String codeHash, Instant now) {
         Query query = new Query(Criteria.where("codeHash").is(codeHash)
                 .and("status").is(Status.CODE_ISSUED).and("expiresAt").gt(now));
-        return traced(Optional.ofNullable(mongoTemplate.findAndModify(query, new Update().set("status", Status.USED),
-                AuthorizationGrant.class)), "consumeCode");
+        return Optional.ofNullable(mongoTemplate.findAndModify(query, new Update().set("status", Status.USED),
+                AuthorizationGrant.class));
     }
 
     /** Finds the grant of a code that was already exchanged. */
@@ -73,13 +74,5 @@ public class MongoAuthorizationGrantStore implements AuthorizationGrantStore {
         mongoTemplate.updateFirst(new Query(Criteria.where("_id").is(grantId)), new Update().set("sessionId", sessionId),
                 AuthorizationGrant.class);
         log.debug("session {} attached to grant {}", sessionId, grantId);
-    }
-
-    /** Logs (debug) the atomic updates that matched no document, i.e. the refused ones. */
-    private static Optional<AuthorizationGrant> traced(Optional<AuthorizationGrant> result, String operation) {
-        if (result.isEmpty()) {
-            log.debug("grant {} matched no document", operation);
-        }
-        return result;
     }
 }

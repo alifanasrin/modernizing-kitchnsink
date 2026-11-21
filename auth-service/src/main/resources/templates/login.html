@@ -15,7 +15,7 @@
   <p class="subtitle">Welcome back. Sign in to continue.</p>
   <p class="notice notice-error" role="alert" th:if="${error != null}" th:text="${error}"></p>
   <form method="post" th:action="@{/login}" th:if="${requestId != null}">
-    <input type="hidden" name="request_id" th:value="${requestId}">
+    <input type="hidden" name="requestId" th:value="${requestId}">
     <label><span class="sr">Email</span>
       <input placeholder="Email" name="email" type="email" autocomplete="username" required maxlength="254">
     </label>
