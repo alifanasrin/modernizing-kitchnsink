@@ -96,9 +96,8 @@ curl -X POST http://localhost:8080/register \
   -H "Content-Type: application/json" \
   -d '{"firstName":"Jane","lastName":"Doe","email":"jane@example.com","phoneNo":"1234567890","password":"correct horse battery staple"}'
 
-# login answers 302 to the client redirect URI with the authorization code; tokens come from POST /oauth2/token
-curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" \
-  -d '{"email":"jane@example.com","password":"correct horse battery staple"}'
+# login is the hosted form at GET /login (reached from GET /oauth2/authorize); its POST /login answers 302 to the client
+# redirect URI with the authorization code, and tokens come from POST /oauth2/token
 ```
 
 ### Validation rules

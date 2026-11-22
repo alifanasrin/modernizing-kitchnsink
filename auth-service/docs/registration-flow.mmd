@@ -1,33 +1,38 @@
----
-title: Registration Flow
----
 sequenceDiagram
     autonumber
-    actor B as User / Browser
-    participant UI as Auth UI
-    participant BFF as Auth BFF
-    participant API as auth-service
+    actor U as User
+    participant A as auth-service
+    participant M as member-service
 
-    rect rgba(150,170,170,0.15)
-    Note over B,API: 1 · Register
-    B->>UI: Fill in name, email, phone, password
-    UI->>BFF: Submit registration
-    BFF->>API: POST /register<br/>firstName, lastName, email, phoneNo, password
-    alt Invalid input
-        Note over API: First and last name max 25 characters each and no digits, valid email,<br/>10 to 12 digit phone, password 15 to 64 characters (NIST SP 800-63B)
-        API--xBFF: 400 with the reason
-        BFF--xUI: Registration failed
-        UI-->>B: Show the field errors
-    else Valid input
-        alt Email already registered
-            Note over API: Save fails on the unique email
-            API--xBFF: 409
-            BFF--xUI: Registration failed
-            UI-->>B: Show email already registered
-        else Member saved
-            API-->>BFF: 200 User Registered
-            BFF-->>UI: Registered
-            UI-->>B: Member can log in right away
+    U->>A: GET /register (open the registration page)
+    A-->>U: 200 register page
+    U->>A: POST /register (first name, last name, email, phone, password)
+
+    alt over the rate limit
+        A-->>U: 429 Too Many Requests
+    else input is invalid (name, email, phone, password size)
+        A-->>U: 400 Bad Request
+    else input is valid
+        A->>A: normalize email
+        A->>A: check password policy (15 to 64 characters)
+        alt password is rejected
+            A-->>U: 400 Invalid password
+        else password is accepted
+            A->>A: hash password (SHA-256 then BCrypt)
+            A->>A: save member (email must be unique)
+            alt email already registered
+                A-->>U: 409 Member Already Exist
+            else saved
+                A-->>U: 200 User Registered
+                Note over A: after the save is committed, publish member registered event (never the password or its hash)
+                A--)M: Kafka member.registered (member id, email, phone, first name, last name)
+                M->>M: parse event
+                alt member with this email exists
+                    M->>M: skip event (idempotent)
+                else new member
+                    M->>M: create member in its own database
+                end
+            end
         end
     end
-    end
+    Note over A,M: a Kafka failure is only logged and never fails the registration

@@ -45,15 +45,7 @@ paths:
     get:
       tags: [Authentication]
       summary: Authorization endpoint (authorization code + PKCE); redirects the browser to the login page
-      description: >
-        Step 1 of the flow. The client sends the user's browser here. The request is validated and stored, and the
-        browser is redirected (302) to the login page with `?request_id=...`. The login page then calls `/auth/login`,
-        which answers with a redirect back to the client carrying `?code=...`.
-        An unknown client or a redirect URI that is not registered exactly answers 400 and is never redirected to.
-        A missing or wrong `response_type`, `code_challenge` or `code_challenge_method` is redirected to the
-        `redirect_uri` with `error` and `error_description`. Redirects to the `redirect_uri` (code or error) also
-        carry `state` when the client sent one, and `iss` (RFC 9207), the issuer identifier of this server.
-      operationId: authorize
+           operationId: authorize
       security: []
       parameters:
         - {name: response_type, in: query, required: true, schema: {type: string, enum: [code]}}
@@ -69,40 +61,6 @@ paths:
             Location: {schema: {type: string}}
         '400':
           description: Unknown client or unregistered redirect URI
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /auth/login:
-    post:
-      tags: [Authentication]
-      summary: Log in with email and password (from the login page); a correct password redirects to the client with an authorization code (no tokens)
-      operationId: login
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-      responses:
-        '302':
-          description: >
-            Redirect to the client's registered redirect URI carrying the one-time authorization code (valid 60
-            seconds). Tokens are issued only by `/oauth2/token`.
-          headers:
-            Location:
-              schema:
-                type: string
-              description: redirect_uri?code=...&state=...&iss=...
-        '400':
-          description: Validation failed, or the authorization request is unknown or expired
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Invalid email or password
           content:
             application/json:
               schema:
@@ -178,33 +136,6 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
   schemas:
-    LoginRequest:
-      type: object
-      required: [email, password, requestId]
-      properties:
-        email:
-          type: string
-          format: email
-          example: jane@example.com
-        password:
-          type: string
-          format: password
-          minLength: 15
-          maxLength: 64
-        requestId:
-          type: string
-          maxLength: 128
-          description: The `request_id` the authorization endpoint put in the login page URL; unknown or expired gets 400
-    AuthorizationCodeResponse:
-      type: object
-      properties:
-        redirectTo:
-          type: string
-          description: The client's redirect URI with the one-time `code` query parameter; send the browser there
-          example: https://app.example.com/cb?code=Zm9v
-        expiresIn:
-          type: integer
-          description: Seconds until the code expires
     TokenResponse:
       type: object
       properties:
