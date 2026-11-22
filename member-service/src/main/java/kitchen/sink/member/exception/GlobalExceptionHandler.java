@@ -30,6 +30,13 @@ public class GlobalExceptionHandler {
         return body(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    /** Returns 409 when a member with the same email already exists. */
+    @ExceptionHandler(MemberAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleMemberAlreadyExists(MemberAlreadyExistsException ex) {
+        log.warn("request refused with 409: {}", ex.getMessage());
+        return body(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     /** Returns 400 for a failed parameter validation. */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {

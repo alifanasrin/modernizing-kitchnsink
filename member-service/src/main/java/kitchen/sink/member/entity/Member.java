@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 /**
- * A member of this service's own {@code member} collection, created from auth-service's member-registered events.
+ * A member of this service's own {@code member} collection, created by auth-service through {@code POST /members}.
  * It has no password hash on purpose, so a credential can never reach this service or leak through it.
  */
 @Document(collection = "member")

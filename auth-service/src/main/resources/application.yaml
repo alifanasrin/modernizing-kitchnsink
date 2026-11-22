@@ -12,17 +12,18 @@ spring:
     uri: mongodb://localhost:27017
     database: auth-db
 
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer # the service writes the JSON itself
-      acks: all # the broker confirms only once the record is safely replicated
-      properties:
-        enable.idempotence: true # a producer retry never writes the record twice
-    template:
-      # the `traceparent` header travels with the record, so member-service continues the registration's trace
-      observation-enabled: true
+  cloud:
+    # Spring Cloud 2026.0.x is released for Boot 4.2.x and this service is on 4.1.2, so its version check is off.
+    # Remove this when Boot moves to 4.2 (or a release train for 4.1 exists).
+    compatibility-verifier:
+      enabled: false
+    openfeign:
+      client:
+        config:
+          member-service:
+            # a slow member-service must not hold up a registration for long
+            connect-timeout: 2000
+            read-timeout: 3000
 
 mongock:
   migration-scan-package:
@@ -50,10 +51,9 @@ management:
       show-details: always
 
 app:
-  kafka:
-    topic:
-      # member-registered events consumed by member-service (key = auth member id)
-      member-registered: ${MEMBER_REGISTERED_TOPIC:member.registered}
+  member-service:
+    # registered members are created here with POST /members
+    url: ${MEMBER_SERVICE_URL:http://localhost:8081}
   oauth:
     # the front-end login page the authorization endpoint redirects to, with ?request_id=...
     login-url: ${OAUTH_LOGIN_URL:http://localhost:8080/login}

@@ -41,6 +41,14 @@ public class GlobalExceptionHandler {
         return refuse(HttpStatus.BAD_REQUEST, ex);
     }
 
+    /** Returns the status of a failed member-service call (503 or 500) in the usual error body. */
+    @ExceptionHandler(MemberServiceException.class)
+    public ResponseEntity<ErrorResponse> handleMemberService(MemberServiceException ex) {
+        log.error("registration undone, member-service call failed with {}", ex.getStatus().value(), ex);
+        return ResponseEntity.status(ex.getStatus())
+                .body(new ErrorResponse(ex.getStatus().value(), ex.getMessage(), LocalDateTime.now()));
+    }
+
     private ResponseEntity<ErrorResponse> refuse(HttpStatus status, RuntimeException ex) {
         log.warn("request refused with {}: {}", status.value(), ex.getMessage());
         return ResponseEntity.status(status)

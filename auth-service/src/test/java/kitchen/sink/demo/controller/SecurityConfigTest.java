@@ -170,19 +170,6 @@ class SecurityConfigTest {
 
     @Test
     @Tag("critical")
-    void login_isPublic_redirectsToTheClientWithTheCodeAndIssuesNoTokens() throws Exception {
-        when(authService.login(any(), any())).thenReturn(
-                new kitchen.sink.demo.dto.response.AuthorizationCodeResponse("https://app.example.com/cb?code=c0de", 60));
-
-        mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN))
-                .andExpect(status().isFound())
-                .andExpect(header().string("Location", "https://app.example.com/cb?code=c0de"))
-                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
-                .andExpect(content().string(""));
-    }
-
-    @Test
-    @Tag("critical")
     void oauthAuthorize_isPublic_andRedirectsToTheLoginPage() throws Exception {
         when(authorizationCodeService.authorize(any())).thenReturn("http://localhost:3000/login?request_id=r1");
 
@@ -242,23 +229,6 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.message").value("Invalid or expired authorization code"));
     }
 
-
-    @Test
-    @Tag("critical")
-    void login_returns401_whenCredentialsWrong() throws Exception {
-        when(authService.login(any(), any())).thenThrow(new AuthenticationFailedException("Invalid email or password"));
-
-        mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Invalid email or password"));
-    }
-
-    @Test
-    void login_returns400_whenBodyInvalid() throws Exception {
-        mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"bad\",\"password\":\"\"}"))
-                .andExpect(status().isBadRequest());
-    }
 
     @Test
     void logout_requiresAuth_andPassesTheBearerTokenToTheAuthService() throws Exception {

@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -57,6 +58,17 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.status").value(401));
         mockMvc.perform(get("/members/ann@example.com")).andExpect(status().isUnauthorized());
         verifyNoInteractions(memberService);
+    }
+
+    /** Temporary: replace with a service-client permission check (see the note on MemberController#createMember). */
+    @Test
+    void postMembers_isOpenUntilServiceAccountTokensExist_butReadsStayProtected() throws Exception {
+        when(memberService.createMember(any())).thenReturn(true);
+
+        mockMvc.perform(post("/members").contentType("application/json")
+                        .content("{\"email\":\"ann@example.com\",\"phoneNo\":\"1234567890\",\"firstName\":\"Ann\"}"))
+                .andExpect(status().isCreated());
+        mockMvc.perform(get("/members")).andExpect(status().isUnauthorized());
     }
 
     @Test

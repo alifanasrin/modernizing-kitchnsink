@@ -4,7 +4,7 @@ Guidance for Claude Code (claude.ai/code) in this repository.
 
 ## Overview
 
-`member-service`: Spring Boot 4.1.2 / Java 21 service with the read-only member REST APIs and a Kafka consumer that creates members, split out of `../auth-service`. Base package `kitchen.sink.member`, port 8081 (`SERVER_PORT`). Build with Maven (`mvn test`, `mvn spring-boot:run`).
+`member-service`: Spring Boot 4.1.2 / Java 21 service with the read-only member REST APIs and `POST /members`, which auth-service calls to create members, split out of `../auth-service`. Base package `kitchen.sink.member`, port 8081 (`SERVER_PORT`). Build with Maven (`mvn test`, `mvn spring-boot:run`).
 
 ## Architecture
 
@@ -24,16 +24,16 @@ Every endpoint needs `Authorization: Bearer <jwt>`, except `/actuator/health`. T
 
 ## Data
 
-Owns its own MongoDB database (`MONGODB_URI`, `MONGODB_DATABASE`, default `member-db`; not auth-service's `auth-db`). Indexes come from annotations on `entity/Member` (`spring.data.mongodb.auto-index-creation`): unique `uk_member_email` and `idx_member_last_first_name` for the sorted list. `Member` has no `password_hash`. `MemberRepository` extends `MongoRepository`; the REST controllers only call the read methods, and the only write is `MemberService.createMember` from the Kafka consumer.
+Owns its own MongoDB database (`MONGODB_URI`, `MONGODB_DATABASE`, default `member-db`; not auth-service's `auth-db`). Indexes come from annotations on `entity/Member` (`spring.data.mongodb.auto-index-creation`): unique `uk_member_email` and `idx_member_last_first_name` for the sorted list. `Member` has no `password_hash`. `MemberRepository` extends `MongoRepository`; the REST controllers only call the read methods, and the only write is `MemberService.createMember`, called by `POST /members`.
 
-## Member creation from Kafka
+## Member creation (POST /members)
 
-Every registration in auth-service publishes a `MEMBER_REGISTERED` event (contract in `event/MemberRegisteredEvent`, same as auth-service's `MemberRegisteredMessage`; no schema version, unknown fields ignored). Flow: `listener/MemberRegisteredListener` (`@KafkaListener`, String payload, group `member-service`, offset committed per record) -> `MemberRegistrationService.process` -> `MemberEventParser` (JSON + Bean Validation; error messages never contain values) -> `MemberService.createMember` (`MemberRepository.save`; a duplicate email hits the unique `uk_member_email` index, the `DuplicateKeyException` is caught and the event skipped, so redelivery changes nothing; no `MongoTemplate`). `createMember` is the only write path.
+After a registration commits, auth-service calls `POST /members` (`MemberController#createMember`, body `CreateMemberRequest`: `email`, `phoneNo`, `firstName`, optional `lastName`, validated like auth-service's registration; unknown/extra fields are not needed, no password ever). The email is normalized, then `MemberService.createMember` (`MemberRepository.save`; a duplicate email hits the unique `uk_member_email` index, the `DuplicateKeyException` is caught and returned as `false`) -> 201 with the `MemberResponse`, or 409 `MemberAlreadyExistsException`. `createMember` is the only write path. Never log request data (PII).
 
-`config/KafkaConfig` declares the topic and its `.DLT`, and a `DefaultErrorHandler`: transient failures (e.g. MongoDB down) are retried with exponential backoff (`app.retry.*`), `InvalidMemberEventException` is never retried, and the record is then published to the DLT (`MEMBER_REGISTERED_TOPIC` + `.DLT`). Retries block the consumer thread. Broker: `KAFKA_BOOTSTRAP_SERVERS`. Never log event data (PII), only ids.
+**Security note (temporary):** `SecurityConfig` permits `POST /members` without a token only because auth-service has no service-client token yet. It must not be exposed publicly (no gateway or ingress route), only reachable from the internal network. Future scope: introduce service clients (backend services with their own identity, OAuth 2 client-credentials grant) and allow this API only to them, with a dedicated permission such as `members:create` held by auth-service, so nobody can create a member without registering. The same note is on `MemberController#createMember`. Kafka is no longer used (the consumer, DLT and `KafkaConfig` were removed).
 
 ## Tests
 
-`MemberControllerTest` (`@WebMvcTest`, filters off), `MemberServiceImplTest` (Mockito), `SecurityConfigTest` (real filter chain and decoder, tokens signed by `TestTokens` with the throwaway key pair in `src/test/resources/test-keys`, public key in `jwt-test.properties`), `JwtConfigTest`, `MemberServiceApplicationTests` (full context, no MongoDB or Kafka needed: `src/test/resources/application.properties` turns off listener start and topic creation), `MemberEventParserImplTest`, `MemberRegistrationServiceImplTest`, and `MemberRegisteredKafkaIntegrationTest` (`@EmbeddedKafka`: a valid event reaches the store, a malformed one lands on the DLT unretried).
+`MemberControllerTest` (`@WebMvcTest`, filters off), `MemberServiceImplTest` (Mockito), `SecurityConfigTest` (real filter chain and decoder, tokens signed by `TestTokens` with the throwaway key pair in `src/test/resources/test-keys`, public key in `jwt-test.properties`), `JwtConfigTest`, `MemberServiceApplicationTests` (full context; it needs a reachable MongoDB, as before).
 
 `src/main/resources/static/openapi.yaml` documents the APIs (served at `/openapi.yaml`, authenticated like everything else).

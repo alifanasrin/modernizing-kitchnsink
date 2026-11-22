@@ -12,7 +12,7 @@
 	<artifactId>member-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>member-service</name>
-	<description>Member APIs secured by the access tokens of auth-service; members are created from auth-service's Kafka events</description>
+	<description>Member APIs secured by the access tokens of auth-service; members are created by auth-service through POST /members</description>
 	<properties>
 		<java.version>21</java.version>
 	</properties>
@@ -42,11 +42,6 @@
 			<groupId>io.micrometer</groupId>
 			<artifactId>micrometer-tracing-bridge-otel</artifactId>
 		</dependency>
-		<!-- Consumes the member-registered events published by auth-service -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-kafka</artifactId>
-		</dependency>
 		<!-- Verifies the RS256 access tokens of auth-service with its public key -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -59,11 +54,6 @@
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-oauth2-jose</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-kafka-test</artifactId>
-			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

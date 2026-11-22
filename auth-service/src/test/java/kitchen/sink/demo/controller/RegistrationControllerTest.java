@@ -3,6 +3,8 @@ package kitchen.sink.demo.controller;
 import kitchen.sink.demo.dto.request.RegistrationRequest;
 import kitchen.sink.demo.dto.response.RegistrationResponse;
 import kitchen.sink.demo.exception.GlobalExceptionHandler;
+import kitchen.sink.demo.exception.MemberServiceException;
+import org.springframework.http.HttpStatus;
 import kitchen.sink.demo.service.RegistrationService;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -63,6 +65,31 @@ class RegistrationControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.message").value("Member Already Exist"));
+    }
+
+    @Test
+    @Tag("critical")
+    void shouldReturn503InTheUsualErrorBody_whenMemberServiceIsUnavailable() throws Exception {
+        when(registrationService.registerUser(any(RegistrationRequest.class))).thenThrow(new MemberServiceException(
+                HttpStatus.SERVICE_UNAVAILABLE, "Registration is temporarily unavailable, please try again later",
+                new RuntimeException("503 from member-service")));
+
+        mockMvc.perform(post("/register").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.message").value("Registration is temporarily unavailable, please try again later"));
+    }
+
+    @Test
+    void shouldReturn500InTheUsualErrorBody_whenMemberServiceFails() throws Exception {
+        when(registrationService.registerUser(any(RegistrationRequest.class))).thenThrow(new MemberServiceException(
+                HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong, please try again later",
+                new RuntimeException("500 from member-service")));
+
+        mockMvc.perform(post("/register").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.message").value("Something went wrong, please try again later"));
     }
 
     @ParameterizedTest(name = "{0}")

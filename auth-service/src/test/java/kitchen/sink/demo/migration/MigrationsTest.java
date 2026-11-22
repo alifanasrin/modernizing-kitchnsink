@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Real MongoDB (localhost:27017), scratch database: runs each Mongock change unit's execute and rollback directly
  * (Mongock itself is disabled) and checks the resulting indexes, validators and data.
  */
+@Tag("integration") // needs a real MongoDB, skipped by default: mvn test -DexcludedTestGroups=none
 @DataMongoTest(properties = {"spring.mongodb.database=membership_migration_test", "mongock.enabled=false"})
 class MigrationsTest {
 

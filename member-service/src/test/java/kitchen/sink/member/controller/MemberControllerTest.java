@@ -15,7 +15,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import kitchen.sink.member.entity.Member;
 
 
 import java.util.List;
@@ -25,6 +27,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -125,5 +128,40 @@ class MemberControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(memberService, never()).findByEmail(any());
+    }
+
+    private static final String NEW_MEMBER =
+            "{\"email\":\"Ann@Example.com\",\"phoneNo\":\"1234567890\",\"firstName\":\"Ann\",\"lastName\":\"Lee\"}";
+
+    @Test
+    @Tag("critical")
+    void shouldReturn201AndCreateMemberWithNormalizedEmail_whenRequestIsValid() throws Exception {
+        when(memberService.createMember(any(Member.class))).thenReturn(true);
+
+        mockMvc.perform(post("/members").contentType(MediaType.APPLICATION_JSON).content(NEW_MEMBER))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("ann@example.com"))
+                .andExpect(jsonPath("$.firstName").value("Ann"));
+
+        verify(memberService).createMember(new Member(null, "ann@example.com", "1234567890", "Ann", "Lee"));
+    }
+
+    @Test
+    @Tag("critical")
+    void shouldReturn409_whenMemberAlreadyExists() throws Exception {
+        when(memberService.createMember(any(Member.class))).thenReturn(false);
+
+        mockMvc.perform(post("/members").contentType(MediaType.APPLICATION_JSON).content(NEW_MEMBER))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void shouldReturn400AndSkipService_whenCreateRequestIsInvalid() throws Exception {
+        mockMvc.perform(post("/members").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nope\",\"phoneNo\":\"12\",\"firstName\":\"\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(memberService, never()).createMember(any());
     }
 }

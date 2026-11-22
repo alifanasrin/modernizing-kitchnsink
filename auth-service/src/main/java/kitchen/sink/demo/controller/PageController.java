@@ -27,7 +27,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 /**
  * Hosts the browser pages ({@code /login}, {@code /register}) as Thymeleaf templates. The login form is a plain browser navigation, because the
  * authorization code comes back as a 302 to the client that a {@code fetch} could not follow. A failure sends the
- * browser back to {@code /login?request_id=...&error=...}; the JSON API stays {@code POST /auth/login}.
+ * browser back to {@code /login?request_id=...&error=...}; the old JSON {@code POST /auth/login} no longer exists.
  */
 @Controller
 public class PageController {

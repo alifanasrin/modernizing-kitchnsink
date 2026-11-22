@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.Optional;
 
-/** Access to members: reads for the REST API and the insert used by the Kafka consumer (via {@code MemberService}). */
+/** Access to members: reads for the REST API and the insert used by {@code POST /members} (via {@code MemberService}). */
 @org.springframework.stereotype.Repository
 public interface MemberRepository extends MongoRepository<Member, String> {
 

@@ -16,6 +16,7 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Real MongoDB (needs one at localhost:27017), in a scratch database. Checks the grant status transitions. */
+@Tag("integration") // needs a real MongoDB, skipped by default: mvn test -DexcludedTestGroups=none
 @DataMongoTest(properties = {"spring.mongodb.database=membership_grant_test", "mongock.enabled=false"})
 @Import(MongoAuthorizationGrantStore.class)
 class MongoAuthorizationGrantStoreTest {

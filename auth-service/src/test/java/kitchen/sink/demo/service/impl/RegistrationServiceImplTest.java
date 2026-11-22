@@ -1,9 +1,13 @@
 package kitchen.sink.demo.service.impl;
 
+import feign.FeignException;
+import feign.Request;
+import kitchen.sink.demo.client.MemberServiceClient;
+import kitchen.sink.demo.exception.MemberServiceException;
+import kitchen.sink.demo.dto.request.CreateMemberRequest;
 import kitchen.sink.demo.dto.request.RegistrationRequest;
 import kitchen.sink.demo.dto.response.RegistrationResponse;
 import kitchen.sink.demo.entity.Member;
-import kitchen.sink.demo.event.MemberRegistered;
 import kitchen.sink.demo.repository.MemberRepository;
 import kitchen.sink.demo.security.PasswordPolicy;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,11 +17,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.dao.DuplicateKeyException;
 
+import org.springframework.http.HttpStatus;
+
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,7 +49,7 @@ class RegistrationServiceImplTest {
     PasswordPolicy passwordPolicy;
 
     @Mock
-    ApplicationEventPublisher events;
+    MemberServiceClient memberServiceClient;
 
     RegistrationServiceImpl service;
 
@@ -50,7 +57,7 @@ class RegistrationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new RegistrationServiceImpl(memberRepository, passwordEncoder, passwordPolicy, events);
+        service = new RegistrationServiceImpl(memberRepository, passwordEncoder, passwordPolicy, memberServiceClient);
     }
 
     private static RegistrationRequest validRequest() {
@@ -91,17 +98,55 @@ class RegistrationServiceImplTest {
 
         assertThatThrownBy(() -> service.registerUser(request)).isInstanceOf(DuplicateKeyException.class);
         verify(memberRepository, times(1)).save(any(Member.class));
-        verify(events, never()).publishEvent(any(Object.class));
+        verify(memberServiceClient, never()).createMember(any());
     }
 
     @Test
     @Tag("critical")
-    void shouldAnnounceRegisteredMember_withoutAnyPassword() {
+    void shouldCreateMemberInMemberService_withoutAnyPassword() {
         service.registerUser(validRequest());
 
-        ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
-        verify(events).publishEvent(event.capture());
-        assertThat(event.getValue()).isEqualTo(new MemberRegistered(null, "ann@example.com", "1234567890", "Ann", "Lee"));
+        verify(memberServiceClient).createMember(
+                new CreateMemberRequest("ann@example.com", "1234567890", "Ann", "Lee"));
+    }
+
+    private static FeignException feignError(int status) {
+        var request = Request.create(Request.HttpMethod.POST, "http://member-service/members", Map.of(),
+                new byte[0], StandardCharsets.UTF_8, null);
+        return FeignException.errorStatus("createMember",
+                feign.Response.builder().status(status).request(request).headers(Map.of()).build());
+    }
+
+    @Test
+    @Tag("critical")
+    void shouldUndoRegistrationAnd503_whenMemberServiceIsUnavailable() {
+        doThrow(feignError(503)).when(memberServiceClient).createMember(any());
+
+        assertThatThrownBy(() -> service.registerUser(validRequest()))
+                .isInstanceOfSatisfying(MemberServiceException.class,
+                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+        verify(memberRepository).delete(any(Member.class));
+    }
+
+    @Test
+    @Tag("critical")
+    void shouldUndoRegistrationAnd500_whenMemberServiceFails() {
+        doThrow(feignError(500)).when(memberServiceClient).createMember(any());
+
+        assertThatThrownBy(() -> service.registerUser(validRequest()))
+                .isInstanceOfSatisfying(MemberServiceException.class,
+                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR));
+        verify(memberRepository).delete(any(Member.class));
+    }
+
+    @Test
+    void shouldAnswer409_whenMemberServiceAlreadyHasTheEmail() {
+        doThrow(feignError(409)).when(memberServiceClient).createMember(any());
+
+        assertThatThrownBy(() -> service.registerUser(validRequest()))
+                .isInstanceOfSatisfying(MemberServiceException.class,
+                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT));
+        verify(memberRepository).delete(any(Member.class));
     }
 
     @Test

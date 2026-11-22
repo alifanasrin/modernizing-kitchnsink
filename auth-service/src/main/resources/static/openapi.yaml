@@ -41,6 +41,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: member-service could not create the member (or another unexpected error); nothing was registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: member-service is unavailable or did not answer; nothing was registered, try again later
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /oauth2/authorize:
     get:
       tags: [Authentication]

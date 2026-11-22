@@ -14,6 +14,7 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Real MongoDB (localhost:27017), scratch database: atomic refresh-token rotation and revocation. */
+@Tag("integration") // needs a real MongoDB, skipped by default: mvn test -DexcludedTestGroups=none
 @DataMongoTest(properties = {"spring.mongodb.database=membership_session_test", "mongock.enabled=false"})
 class SessionRepositoryTest {
 

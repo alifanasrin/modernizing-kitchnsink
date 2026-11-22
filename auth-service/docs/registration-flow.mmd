@@ -23,16 +23,26 @@ sequenceDiagram
             alt email already registered
                 A-->>U: 409 Member Already Exist
             else saved
-                A-->>U: 200 User Registered
-                Note over A: after the save is committed, publish member registered event (never the password or its hash)
-                A--)M: Kafka member.registered (member id, email, phone, first name, last name)
-                M->>M: parse event
-                alt member with this email exists
-                    M->>M: skip event (idempotent)
-                else new member
+                Note over A: after the save, call member-service through the Feign client (never the password or its hash)
+                A->>M: POST /members (email, phone, first name, last name)
+                alt member-service creates the member
                     M->>M: create member in its own database
+                    M-->>A: 201
+                    A-->>U: 200 User Registered
+                else member-service answers 409
+                    M-->>A: 409
+                    A->>A: undo registration (delete saved member)
+                    A-->>U: 409 Member Already Exist
+                else member-service answers 503 or does not answer
+                    M--xA: 503 / timeout
+                    A->>A: undo registration (delete saved member)
+                    A-->>U: 503 Registration is temporarily unavailable
+                else member-service fails otherwise (for example 500)
+                    M-->>A: 500
+                    A->>A: undo registration (delete saved member)
+                    A-->>U: 500 Something went wrong
                 end
             end
         end
     end
-    Note over A,M: a Kafka failure is only logged and never fails the registration
+    Note over A,M: a failed call to member-service fails the registration, the member is not kept

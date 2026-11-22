@@ -1,12 +1,14 @@
 package kitchen.sink.demo;
 
 import com.sun.net.httpserver.HttpServer;
+import io.github.bucket4j.distributed.proxy.ProxyManager;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestClient;
 
 import java.net.InetSocketAddress;
@@ -16,12 +18,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Needs MongoDB, like DemoApplicationTests (the full context starts). */
-@SpringBootTest
+/** Starts the whole application with no MongoDB and no Valkey (Mongock off, rate-limit store mocked). */
+@SpringBootTest(properties = "mongock.enabled=false")
 @TestPropertySource(locations = "classpath:jwt-test.properties")
 class TracePropagationTest {
 
     // the starter auto-configures the (traced) builder, not a RestClient bean
+    @MockitoBean ProxyManager<String> rateLimitProxyManager;
+
     @Autowired RestClient.Builder restClientBuilder;
     @Autowired Tracer tracer;
 
