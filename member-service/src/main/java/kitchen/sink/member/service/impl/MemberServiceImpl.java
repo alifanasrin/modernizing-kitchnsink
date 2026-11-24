@@ -1,11 +1,14 @@
 package kitchen.sink.member.service.impl;
 
 import org.springframework.dao.DuplicateKeyException;
+import kitchen.sink.member.dto.request.CreateMemberRequest;
 import kitchen.sink.member.dto.request.MemberRequest;
 import kitchen.sink.member.dto.response.MemberResponse;
 import kitchen.sink.member.dto.response.PaginatedResponse;
 import kitchen.sink.member.entity.Member;
+import kitchen.sink.member.exception.MemberAlreadyExistsException;
 import kitchen.sink.member.exception.MemberNotFoundException;
+import kitchen.sink.member.mapper.MemberMapper;
 import kitchen.sink.member.repository.MemberRepository;
 import kitchen.sink.member.service.MemberService;
 import kitchen.sink.member.util.EmailNormalizer;
@@ -24,8 +27,11 @@ public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository memberRepository;
 
-    public MemberServiceImpl(MemberRepository memberRepository) {
+    private final MemberMapper memberMapper;
+
+    public MemberServiceImpl(MemberRepository memberRepository, MemberMapper memberMapper) {
         this.memberRepository = memberRepository;
+        this.memberMapper = memberMapper;
     }
 
     /** Reads one page of members sorted by last and first name and maps it to a response. */
@@ -48,15 +54,16 @@ public class MemberServiceImpl implements MemberService {
         return MemberResponse.from(member);
     }
 
+    /** Maps the request to a member and saves it; the unique email index decides whether it already exists. */
     @Override
-    public boolean createMember(Member member) {
-       log.info("create a member");
-       try {
-           memberRepository.save(member);
-           return true;
-       }catch (DuplicateKeyException exception){
-           log.debug("such a member already exist");
-           return false;
-       }
+    public MemberResponse createMember(CreateMemberRequest request) {
+        log.info("create a member");
+        Member member = memberMapper.toEntity(request);
+        try {
+            return MemberResponse.from(memberRepository.save(member));
+        } catch (DuplicateKeyException exception) {
+            log.debug("such a member already exist");
+            throw new MemberAlreadyExistsException("Member already exists");
+        }
     }
 }

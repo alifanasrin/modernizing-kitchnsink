@@ -8,10 +8,7 @@ import kitchen.sink.member.dto.request.CreateMemberRequest;
 import kitchen.sink.member.dto.request.MemberRequest;
 import kitchen.sink.member.dto.response.MemberResponse;
 import kitchen.sink.member.dto.response.PaginatedResponse;
-import kitchen.sink.member.entity.Member;
-import kitchen.sink.member.exception.MemberAlreadyExistsException;
 import kitchen.sink.member.service.MemberService;
-import kitchen.sink.member.util.EmailNormalizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -68,11 +65,6 @@ public class MemberController {
     @PostMapping
     ResponseEntity<MemberResponse> createMember(@Valid @RequestBody CreateMemberRequest request) {
         log.debug("member creation requested");
-        Member member = new Member(null, EmailNormalizer.normalize(request.email()), request.phoneNo(),
-                request.firstName(), request.lastName());
-        if (!memberService.createMember(member)) {
-            throw new MemberAlreadyExistsException("Member already exists");
-        }
-        return ResponseEntity.status(HttpStatus.CREATED).body(MemberResponse.from(member));
+        return ResponseEntity.status(HttpStatus.CREATED).body(memberService.createMember(request));
     }
 }

@@ -1,10 +1,13 @@
 package kitchen.sink.member.service.impl;
 
+import kitchen.sink.member.dto.request.CreateMemberRequest;
 import kitchen.sink.member.dto.request.MemberRequest;
 import kitchen.sink.member.dto.response.MemberResponse;
 import kitchen.sink.member.dto.response.PaginatedResponse;
 import kitchen.sink.member.entity.Member;
+import kitchen.sink.member.exception.MemberAlreadyExistsException;
 import kitchen.sink.member.exception.MemberNotFoundException;
+import kitchen.sink.member.mapper.MemberMapper;
 import kitchen.sink.member.repository.MemberRepository;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -12,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mapstruct.factory.Mappers;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DuplicateKeyException;
@@ -34,6 +39,9 @@ class MemberServiceImplTest {
 
     @Mock
     MemberRepository memberRepository;
+
+    @Spy
+    MemberMapper memberMapper = Mappers.getMapper(MemberMapper.class);
 
     @InjectMocks
     MemberServiceImpl service;
@@ -105,37 +113,43 @@ class MemberServiceImplTest {
                 .hasMessage("Member Not Found with email nobody@example.com");
     }
 
-    @Test
-    void shouldSaveMemberAndReturnTrue_whenMemberIsNew() {
-        Member member = new Member(null, "ann@example.com", "1234567890", "Ann", "Lee");
-
-        boolean created = service.createMember(member);
-
-        assertThat(created).isTrue();
-        verify(memberRepository).save(member);
+    private static CreateMemberRequest newMember() {
+        return new CreateMemberRequest("Ann@Example.com", "1234567890", "Ann", "Lee");
     }
 
     @Test
-    void shouldReturnFalse_whenSpringTranslatesTheDuplicateKey() {
-        // MongoRepository.save throws Spring's DuplicateKeyException (the unique email index), not the driver's
-        Member member = ann();
-        when(memberRepository.save(member)).thenThrow(new DuplicateKeyException("E11000 duplicate key"));
+    void shouldMapNormalizeAndSaveMember_whenMemberIsNew() {
+        Member expected = new Member(null, "ann@example.com", "1234567890", "Ann", "Lee");
+        when(memberRepository.save(expected)).thenReturn(ann());
 
-        assertThat(service.createMember(member)).isFalse();
+        MemberResponse created = service.createMember(newMember());
+
+        assertThat(created).isEqualTo(new MemberResponse("Ann", "Lee", "1234567890", "ann@example.com"));
+        verify(memberRepository).save(expected);
+    }
+
+    @Test
+    void shouldThrowAlreadyExists_whenSpringTranslatesTheDuplicateKey() {
+        // MongoRepository.save throws Spring's DuplicateKeyException (the unique email index), not the driver's
+        when(memberRepository.save(any(Member.class))).thenThrow(new DuplicateKeyException("E11000 duplicate key"));
+
+        assertThatThrownBy(() -> service.createMember(newMember()))
+                .isInstanceOf(MemberAlreadyExistsException.class);
     }
 
     @Test
     void shouldPropagateTheException_whenSaveFailsForAnotherReason() {
-        Member member = ann();
-        when(memberRepository.save(member)).thenThrow(new DataAccessResourceFailureException("mongo down"));
+        when(memberRepository.save(any(Member.class))).thenThrow(new DataAccessResourceFailureException("mongo down"));
 
-        assertThatThrownBy(() -> service.createMember(member))
+        assertThatThrownBy(() -> service.createMember(newMember()))
                 .isInstanceOf(DataAccessResourceFailureException.class);
     }
 
     @Test
     void shouldNotTouchTheRepositoryForReads_whenCreatingAMember() {
-        service.createMember(ann());
+        when(memberRepository.save(any(Member.class))).thenReturn(ann());
+
+        service.createMember(newMember());
 
         verify(memberRepository, never()).findByEmail(any());
     }

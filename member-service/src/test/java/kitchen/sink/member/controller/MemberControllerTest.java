@@ -1,8 +1,10 @@
 package kitchen.sink.member.controller;
 
+import kitchen.sink.member.dto.request.CreateMemberRequest;
 import kitchen.sink.member.dto.request.MemberRequest;
 import kitchen.sink.member.dto.response.MemberResponse;
 import kitchen.sink.member.dto.response.PaginatedResponse;
+import kitchen.sink.member.exception.MemberAlreadyExistsException;
 import kitchen.sink.member.exception.GlobalExceptionHandler;
 import kitchen.sink.member.exception.MemberNotFoundException;
 import kitchen.sink.member.service.MemberService;
@@ -135,21 +137,24 @@ class MemberControllerTest {
 
     @Test
     @Tag("critical")
-    void shouldReturn201AndCreateMemberWithNormalizedEmail_whenRequestIsValid() throws Exception {
-        when(memberService.createMember(any(Member.class))).thenReturn(true);
+    void shouldReturn201AndPassRequestToService_whenRequestIsValid() throws Exception {
+        CreateMemberRequest request = new CreateMemberRequest("Ann@Example.com", "1234567890", "Ann", "Lee");
+        when(memberService.createMember(request))
+                .thenReturn(new MemberResponse("Ann", "Lee", "1234567890", "ann@example.com"));
 
         mockMvc.perform(post("/members").contentType(MediaType.APPLICATION_JSON).content(NEW_MEMBER))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value("ann@example.com"))
                 .andExpect(jsonPath("$.firstName").value("Ann"));
 
-        verify(memberService).createMember(new Member(null, "ann@example.com", "1234567890", "Ann", "Lee"));
+        verify(memberService).createMember(request);
     }
 
     @Test
     @Tag("critical")
     void shouldReturn409_whenMemberAlreadyExists() throws Exception {
-        when(memberService.createMember(any(Member.class))).thenReturn(false);
+        when(memberService.createMember(any(CreateMemberRequest.class)))
+                .thenThrow(new MemberAlreadyExistsException("Member already exists"));
 
         mockMvc.perform(post("/members").contentType(MediaType.APPLICATION_JSON).content(NEW_MEMBER))
                 .andExpect(status().isConflict())

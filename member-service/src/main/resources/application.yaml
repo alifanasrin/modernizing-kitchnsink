@@ -37,3 +37,7 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+logging:
+  pattern:
+    # readable trace context; blank outside a request (startup, background threads)
+    correlation: "[traceId=%X{traceId:-} spanId=%X{spanId:-}] "

@@ -1,9 +1,9 @@
 package kitchen.sink.member.service;
 
+import kitchen.sink.member.dto.request.CreateMemberRequest;
 import kitchen.sink.member.dto.request.MemberRequest;
 import kitchen.sink.member.dto.response.MemberResponse;
 import kitchen.sink.member.dto.response.PaginatedResponse;
-import kitchen.sink.member.entity.Member;
 
 public interface MemberService {
 
@@ -13,6 +13,6 @@ public interface MemberService {
     /** Returns the member with the given email address. */
     MemberResponse findByEmail(String email);
 
-
-    boolean createMember(Member member);
+    /** Creates the member; throws {@code MemberAlreadyExistsException} if the email is taken. */
+    MemberResponse createMember(CreateMemberRequest request);
 }

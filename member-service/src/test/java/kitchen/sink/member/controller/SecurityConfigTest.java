@@ -63,7 +63,8 @@ class SecurityConfigTest {
     /** Temporary: replace with a service-client permission check (see the note on MemberController#createMember). */
     @Test
     void postMembers_isOpenUntilServiceAccountTokensExist_butReadsStayProtected() throws Exception {
-        when(memberService.createMember(any())).thenReturn(true);
+        when(memberService.createMember(any()))
+                .thenReturn(new MemberResponse("Ann", "Lee", "1234567890", "ann@example.com"));
 
         mockMvc.perform(post("/members").contentType("application/json")
                         .content("{\"email\":\"ann@example.com\",\"phoneNo\":\"1234567890\",\"firstName\":\"Ann\"}"))

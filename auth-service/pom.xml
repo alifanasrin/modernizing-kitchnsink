@@ -138,6 +138,11 @@
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-openfeign</artifactId>
 		</dependency>
+		<!-- Makes Feign calls observed, so the traceparent header is sent to member-service -->
+		<dependency>
+			<groupId>io.github.openfeign</groupId>
+			<artifactId>feign-micrometer</artifactId>
+		</dependency>
 		<!-- Trace ids for logs and traceparent propagation only; no exporter on the classpath, nothing is exported -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
